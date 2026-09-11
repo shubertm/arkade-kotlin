@@ -21,7 +21,7 @@ class UnilateralPathArkTapScript(
         }
 
         val multisigASM = Script.parse(ownersMultisig.buildScript()).toMutableList()
-        multisigASM.removeLast()
+        multisigASM.removeAt(multisigASM.lastIndex)
         multisigASM.add(OP_CHECKSIG)
 
         conditionASM.add(OP_PUSHDATA(Script.encodeNumber(timeout)))
