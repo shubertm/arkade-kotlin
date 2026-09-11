@@ -121,7 +121,7 @@ class VHTLCContract(
                 null,
                 vtxo.isSwept,
                 vtxo.isUnrolled,
-                null,
+                vtxo.assets,
             )
         }
 
@@ -153,7 +153,7 @@ class VHTLCContract(
                 null,
                 vtxo.isSwept,
                 vtxo.isUnrolled,
-                null,
+                vtxo.assets,
             )
         }
 
@@ -299,8 +299,7 @@ class VHTLCContract(
             requireNotNull(senderDescriptor) { "Missing sender descriptor" }
             val receiverDescriptor = data["receiver"]
             requireNotNull(receiverDescriptor) { "Missing receiver descriptor" }
-            val hash = data["hash"]
-            requireNotNull(hash) { "Missing hash" }
+            val hash = requireNotNull(data["hash"]) { "Missing hash" }.hexToByteArray()
             val refundLockTime = data["refundLockTime"]
             requireNotNull(refundLockTime) { "Missing refund lock time" }
             val unilateralClaimDelay = data["unilateralClaimDelay"]
@@ -312,7 +311,7 @@ class VHTLCContract(
             val preimage = data["preimage"]
             if (preimage != null) {
                 val preimageBytes = ByteVector.fromHex(preimage)
-                require(hash.encodeToByteArray().contentEquals(hash160(preimageBytes))) { "preimage does not match hash" }
+                require(hash.contentEquals(hash160(preimageBytes))) { "preimage does not match hash" }
                 return VHTLCContract(
                     walletId,
                     serverDescriptor,
@@ -330,7 +329,7 @@ class VHTLCContract(
                 serverDescriptor,
                 senderDescriptor,
                 receiverDescriptor,
-                hash.encodeToByteArray(),
+                hash,
                 refundLockTime.toLong(),
                 unilateralClaimDelay.toLong(),
                 unilateralRefundDelay.toLong(),
