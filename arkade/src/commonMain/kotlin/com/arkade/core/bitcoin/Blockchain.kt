@@ -19,7 +19,7 @@ interface Blockchain {
 
     fun getTxStatus(txId: TxId): TxStatus
 
-    fun estimateFeeRate(confirmTarget: Int = 6)
+    fun estimateFeeRate(confirmTarget: Int = 6): Float
 }
 
 data class ChainTime(

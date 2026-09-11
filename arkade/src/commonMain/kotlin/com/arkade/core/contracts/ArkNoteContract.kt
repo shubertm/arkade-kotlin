@@ -25,7 +25,7 @@ class ArkNoteContract(
     val hash = sha256(preimage)
     val outpoint = OutPoint(TxId(hash), 0)
 
-    override fun getTapLeafScripts(): List<ByteArray> = listOf(claimPath().script)
+    override fun getTapLeafScripts(): List<ByteArray> = listOf(claimScript())
 
     override fun getAdditionalData(): Map<String, String> =
         mapOf(
@@ -53,10 +53,14 @@ class ArkNoteContract(
         )
 
     fun claimPath(): ScriptSpendingPath {
-        val hashLock = HashLockTapScript(hash, HashLockTapScript.HashLockType.SHA256)
-        val script = hashLock.buildScript()
+        val script = claimScript()
         val controlBlock = getControlBlock(script)
         return ScriptSpendingPath(script, controlBlock)
+    }
+
+    private fun claimScript(): ByteArray {
+        val hashLock = HashLockTapScript(hash, HashLockTapScript.HashLockType.SHA256)
+        return hashLock.buildScript()
     }
 
     companion object {
