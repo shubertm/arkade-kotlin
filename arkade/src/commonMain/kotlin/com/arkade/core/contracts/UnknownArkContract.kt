@@ -1,6 +1,7 @@
 package com.arkade.core.contracts
 
 import com.arkade.core.ArkAddress
+import com.arkade.core.bitcoin.Network
 import com.arkade.core.coins.ArkCoin
 import com.arkade.core.vtxos.Vtxo
 
@@ -27,9 +28,9 @@ class UnknownArkContract(
         TODO("Not yet implemented")
     }
 
-    fun getAddress(): ArkAddress = address
+    override fun getArkAddress(network: Network?): ArkAddress = address
 
-    fun getScriptPubKey(): ByteArray = address.toP2TRScriptPubkey()
+    override fun getScriptPubKey(network: Network): String = address.toP2TRScriptPubkey().toHexString()
 
     companion object {
         const val TYPE = "Unknown"

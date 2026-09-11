@@ -59,7 +59,7 @@ class ArkBoardingContract(
      *
      * @throws UnsupportedOperationException always. Use [getOnChainAddress] instead.
      */
-    override fun getArkAddress(network: Network): ArkAddress =
+    override fun getArkAddress(network: Network?): ArkAddress =
         throw UnsupportedOperationException("Boarding contracts use on-chain Bitcoin addresses. Use getOnChainAddress(network) instead.")
 
     /**

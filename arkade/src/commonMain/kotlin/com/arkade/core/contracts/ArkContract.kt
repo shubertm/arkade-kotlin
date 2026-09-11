@@ -67,7 +67,8 @@ abstract class ArkContract(
      * @param network the Bitcoin network to derive the address for.
      * @return the [ArkAddress] for this contract.
      */
-    open fun getArkAddress(network: Network): ArkAddress {
+    open fun getArkAddress(network: Network? = null): ArkAddress {
+        requireNotNull(network) { "Missing network" }
         val taprootSpendingInfo = getTaprootSpendingInfo()
         requireNotNull(serverDescriptor) { "Missing server descriptor" }
         return ArkAddress.create(
