@@ -74,9 +74,10 @@ class ArkNoteContract(
             data: Map<String, String>,
         ): ArkContract {
             val amount = data["amount"]?.toInt()
-            val preimage = data["preimage"]?.encodeToByteArray()
             requireNotNull(amount) { "Invalid contract amount" }
+            val preimage = data["preimage"]?.hexToByteArray()
             requireNotNull(preimage) { "Invalid contract preimage" }
+            require(preimage.size == PREIMAGE_SIZE) { "Invalid contract preimage" }
             return ArkNoteContract(walletId, amount, preimage)
         }
 
