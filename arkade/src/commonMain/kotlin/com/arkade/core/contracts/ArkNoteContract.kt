@@ -12,6 +12,7 @@ import fr.acinq.bitcoin.ScriptWitness
 import fr.acinq.bitcoin.TxId
 import fr.acinq.bitcoin.io.ByteArrayInput
 import fr.acinq.bitcoin.io.readNBytes
+import okio.Buffer
 
 class ArkNoteContract(
     walletId: String,
@@ -75,9 +76,11 @@ class ArkNoteContract(
         ): ArkContract {
             val amount = data["amount"]?.toInt()
             requireNotNull(amount) { "Invalid contract amount" }
+
             val preimage = data["preimage"]?.hexToByteArray()
             requireNotNull(preimage) { "Invalid contract preimage" }
             require(preimage.size == PREIMAGE_SIZE) { "Invalid contract preimage" }
+
             return ArkNoteContract(walletId, amount, preimage)
         }
 
@@ -92,10 +95,19 @@ class ArkNoteContract(
                 "Invalid Ark note"
             }
             val contractBytesInput = ByteArrayInput(contractBytes)
+
             val preimage = contractBytesInput.readNBytes(PREIMAGE_SIZE)
-            val amount = contractBytesInput.readNBytes(AMOUNT_LENGTH)?.toHexString()?.toInt()
-            requireNotNull(amount) { "Invalid contract amount" }
             requireNotNull(preimage) { "Invalid contract preimage" }
+            require(preimage.size == PREIMAGE_SIZE) { "Invalid contract preimage" }
+
+            val amount =
+                Buffer()
+                    .write(
+                        requireNotNull(contractBytesInput.readNBytes(AMOUNT_LENGTH)) {
+                            "Invalid Ark note amount"
+                        },
+                    ).readInt()
+
             return ArkNoteContract(walletId, amount, preimage)
         }
     }
