@@ -70,6 +70,7 @@ class VHTLCContract(
         val cooperativeScript = cooperativeScript()
         val refundWithoutReceiverScript = refundWithoutReceiverScript()
         val unilateralClaimScript = unilateralClaimScript()
+        val unilateralRefundScript = unilateralRefundScript()
         val unilateralRefundWithoutReceiverScript = unilateralRefundWithoutReceiverScript()
 
         return listOf(
@@ -77,6 +78,7 @@ class VHTLCContract(
             cooperativeScript,
             refundWithoutReceiverScript,
             unilateralClaimScript,
+            unilateralRefundScript,
             unilateralRefundWithoutReceiverScript,
         )
     }
@@ -270,6 +272,20 @@ class VHTLCContract(
                 unilateralClaimDelay,
                 receiverMultisigScript,
                 hashLockScript,
+            )
+        return unilateralClaimScript.buildScript()
+    }
+
+    private fun unilateralRefundScript(): ByteArray {
+        val unilateralClaimScript =
+            UnilateralPathArkTapScript(
+                unilateralRefundDelay,
+                NofNMultisigTapScript(
+                    listOf(
+                        pubKeyFromTaprootDescriptor(senderDescriptor).toXOnlyPubKey(),
+                        pubKeyFromTaprootDescriptor(receiverDescriptor).toXOnlyPubKey(),
+                    ),
+                ),
             )
         return unilateralClaimScript.buildScript()
     }
