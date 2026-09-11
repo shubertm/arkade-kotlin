@@ -30,7 +30,7 @@ class NofNMultisigTapScript(
                 val pushData = asm[i]
                 val checkOp = asm[i + 1]
                 require(pushData is OP_PUSHDATA && pushData.data.size() == 32) { "Invalid multisig script" }
-                require(checkOp == OP_CHECKSIGVERIFY || checkOp == OP_CHECKSIG) { "Invalid multisig script" }
+                require(checkOp == OP_CHECKSIGVERIFY || (i == asm.lastIndex - 1 && checkOp == OP_CHECKSIG)) { "Invalid multisig script" }
                 val owner = XonlyPublicKey(ByteVector32(pushData.data))
                 owners.add(owner)
             }
