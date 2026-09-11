@@ -9,9 +9,16 @@ class LockTimeTapScript(
     private val lockTime: Long,
 ) : ArkTapScript {
     override fun buildScript(): ByteArray {
+        require(lockTime > 0) { "Lock time must be positive" }
+        val lockTimePush =
+            if (lockTime in 1..16) {
+                Script.fromSimpleValue(lockTime.toByte())
+            } else {
+                OP_PUSHDATA(Script.encodeNumber(lockTime))
+            }
         val asm =
             listOf(
-                OP_PUSHDATA(Script.encodeNumber(lockTime)),
+                lockTimePush,
                 OP_CHECKLOCKTIMEVERIFY,
                 OP_DROP,
             )
