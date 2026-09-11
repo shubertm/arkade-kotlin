@@ -22,20 +22,19 @@ class NofNMultisigTapScript(
 
     companion object {
         fun parse(script: ByteArray): NofNMultisigTapScript {
-            val owners = hashSetOf<XonlyPublicKey>()
+            val owners = mutableListOf<XonlyPublicKey>()
             val asm = Script.parse(script)
-            var lastOp = asm.last()
-            var index = asm.lastIndex
+            require(asm.size >= 2 && asm.size % 2 == 0) { "Invalid multisig script" }
 
-            while (lastOp != OP_CHECKSIG) {
-                lastOp = asm[index]
-                val push = asm[index - 1] as OP_PUSHDATA
-                if (lastOp == OP_CHECKSIGVERIFY && push.isPush()) {
-                    val pubKey = XonlyPublicKey(ByteVector32(push.data))
-                    owners.add(pubKey)
-                }
-                index -= 2
+            for (i in asm.indices step 2) {
+                val pushData = asm[i]
+                val checkOp = asm[i + 1]
+                require(pushData is OP_PUSHDATA && pushData.data.size() == 32) { "Invalid multisig script" }
+                require(checkOp == OP_CHECKSIGVERIFY || checkOp == OP_CHECKSIG) { "Invalid multisig script" }
+                val owner = XonlyPublicKey(ByteVector32(pushData.data))
+                owners.add(owner)
             }
+
             return NofNMultisigTapScript(owners.toList())
         }
     }
