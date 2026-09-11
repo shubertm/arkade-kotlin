@@ -287,7 +287,7 @@ class BatchManagementService(
             val vtxos =
                 wallet.getVtxos(
                     outpoints = intent.vtxos.toTypedArray(),
-                    includeSpent = true,
+                    includeSpent = false,
                 )
 
             val vtxosScripts =
