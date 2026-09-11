@@ -32,8 +32,8 @@ class UnilateralPathArkTapScript(
     }
 
     companion object {
-        fun parse(script: String): UnilateralPathArkTapScript {
-            val scriptASM = Script.parse(script.encodeToByteArray())
+        fun parse(script: ByteArray): UnilateralPathArkTapScript {
+            val scriptASM = Script.parse(script)
 
             var conditionASM = listOf<ScriptElt>()
             if (scriptASM.contains(OP_VERIFY)) {
@@ -42,7 +42,7 @@ class UnilateralPathArkTapScript(
 
             require(scriptASM.contains(OP_CHECKSEQUENCEVERIFY) && scriptASM.contains(OP_DROP)) { "Invalid unilateral path script" }
             val sequencePush = scriptASM[scriptASM.indexOf(OP_CHECKSEQUENCEVERIFY) - 1] as OP_PUSHDATA
-            val timeout = sequencePush.data.toHex().toLong()
+            val timeout = Script.decodeNumber(sequencePush.data, true, 5)
 
             require(scriptASM.contains(OP_CHECKSIG)) { "Invalid unilateral path script" }
             val multisigASM = scriptASM.subList(scriptASM.indexOf(OP_DROP) + 1, scriptASM.size)
