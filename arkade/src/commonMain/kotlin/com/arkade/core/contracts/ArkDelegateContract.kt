@@ -62,7 +62,6 @@ class ArkDelegateContract(
             null,
             null,
             null,
-            vtxo.isSpent,
             vtxo.isSwept,
             vtxo.isUnrolled,
             vtxo.assets,

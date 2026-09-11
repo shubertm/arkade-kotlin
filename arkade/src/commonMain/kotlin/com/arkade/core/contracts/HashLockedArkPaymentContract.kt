@@ -74,7 +74,6 @@ class HashLockedArkPaymentContract(
             witness,
             null,
             null,
-            vtxo.isSpent,
             vtxo.isSwept,
             vtxo.isUnrolled,
             vtxo.assets,

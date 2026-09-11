@@ -22,7 +22,6 @@ data class ArkCoin(
     val spendingConditionWitness: ScriptWitness?,
     val lockTime: Long?,
     val sequence: Long?,
-    val isSpent: Boolean,
     val isSwept: Boolean,
     val isUnrolled: Boolean,
     val assets: List<Asset>?,

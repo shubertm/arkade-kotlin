@@ -120,7 +120,6 @@ class ArkBoardingContract(
             spendingConditionWitness = null,
             lockTime = null,
             sequence = null,
-            isSpent = vtxo.isSpent,
             isSwept = vtxo.isSwept,
             isUnrolled = vtxo.isUnrolled,
             assets = vtxo.assets,

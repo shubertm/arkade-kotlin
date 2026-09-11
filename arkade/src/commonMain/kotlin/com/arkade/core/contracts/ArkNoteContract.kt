@@ -47,7 +47,6 @@ class ArkNoteContract(
             ScriptWitness(listOf(ByteVector(preimage))),
             null,
             null,
-            vtxo.isSpent,
             true,
             vtxo.isUnrolled,
             vtxo.assets,
