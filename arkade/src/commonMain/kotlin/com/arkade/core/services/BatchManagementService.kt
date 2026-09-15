@@ -3,6 +3,7 @@ package com.arkade.core.services
 import com.arkade.core.ArkServerInfo
 import com.arkade.core.batches.BatchEvent
 import com.arkade.core.batches.BatchSession
+import com.arkade.core.coins.ArkCoin
 import com.arkade.core.intents.ArkIntent
 import com.arkade.core.intents.IntentState
 import com.arkade.core.intents.RegisterIntentMessage
@@ -303,29 +304,31 @@ class BatchManagementService(
                     vtxosScripts,
                 )
 
-            val spendableCoins =
-                intent.vtxos.map { outpoint ->
-                    val vtxo =
-                        vtxos.find { vtxo ->
-                            vtxo.outpoint == outpoint
-                        }
-
-                    if (vtxo == null) {
-                        Log.error(LOG_TAG, "VTXO $outpoint not found in storage for intent $intentId")
-                        throw IllegalArgumentException("VTXO $outpoint not found in storage for intent $intentId")
+            val spendableCoins = mutableListOf<ArkCoin>()
+            intent.vtxos.forEach { outpoint ->
+                val vtxo =
+                    vtxos.find { vtxo ->
+                        vtxo.outpoint == outpoint
                     }
 
-                    val contract =
-                        contracts.find { contract ->
-                            contract.getScriptPubKey(serverInfo.network) == vtxo.script
-                        }
-                    if (contract == null) {
-                        Log.error(LOG_TAG, "Contract for VTXO $outpoint not found in storage for intent $intentId")
-                        throw IllegalArgumentException("Contract for VTXO $outpoint not found in storage for intent $intentId")
-                    }
-
-                    contract.toArkCoin(vtxo)
+                if (vtxo == null) {
+                    Log.error(LOG_TAG, "VTXO $outpoint not found in storage for intent $intentId")
+                    throw IllegalArgumentException("VTXO $outpoint not found in storage for intent $intentId")
                 }
+
+                val contract =
+                    contracts.find { contract ->
+                        contract.getScriptPubKey(serverInfo.network) == vtxo.script
+                    }
+                if (contract == null) {
+                    Log.error(LOG_TAG, "Contract for VTXO $outpoint not found in storage for intent $intentId")
+                    throw IllegalArgumentException("Contract for VTXO $outpoint not found in storage for intent $intentId")
+                }
+
+                if (vtxo.isSpent) return@forEach
+
+                spendableCoins.add(contract.toArkCoin(vtxo))
+            }
             val batchSession =
                 BatchSession(
                     client,
