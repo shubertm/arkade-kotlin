@@ -66,6 +66,7 @@ abstract class ArkContract(
      *
      * @param network the Bitcoin network to derive the address for.
      * @return the [ArkAddress] for this contract.
+     * @throws IllegalArgumentException if [network] or the server descriptor is missing.
      */
     open fun getArkAddress(network: Network? = null): ArkAddress {
         requireNotNull(network) { "Missing network" }
@@ -118,6 +119,11 @@ abstract class ArkContract(
         return taprootSpendingInfo
     }
 
+    /**
+     * Builds the control block that proves [script] is a leaf in this contract's Taproot tree.
+     *
+     * @throws IllegalArgumentException If [script] is not one of [getTapLeafScripts].
+     */
     protected fun getControlBlock(script: ByteArray): ByteArray {
         val spendingInfo = getTaprootSpendingInfo()
         val spendingLeaf =

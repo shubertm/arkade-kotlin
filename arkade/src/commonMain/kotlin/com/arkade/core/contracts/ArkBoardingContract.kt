@@ -106,6 +106,11 @@ class ArkBoardingContract(
         )
     }
 
+    /**
+     * Converts [vtxo] to a coin that uses the user's descriptor and collaborative spending path.
+     *
+     * The VTXO's lifecycle flags and optional asset metadata are preserved.
+     */
     override suspend fun toArkCoin(vtxo: Vtxo.Data): ArkCoin =
         ArkCoin(
             walletId,

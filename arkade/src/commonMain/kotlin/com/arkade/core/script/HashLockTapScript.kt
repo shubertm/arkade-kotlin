@@ -11,6 +11,9 @@ class HashLockTapScript(
     val hashLockType: HashLockType =
         if (hash.size == 20) HashLockType.HASH160 else HashLockType.SHA256,
 ) : ArkTapScript {
+    /**
+     * Builds a script that hashes the witness value with [hashLockType] and compares it to [hash].
+     */
     override fun buildScript(): ByteArray {
         val asm =
             listOf(

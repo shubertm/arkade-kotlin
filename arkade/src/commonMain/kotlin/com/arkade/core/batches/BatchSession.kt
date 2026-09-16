@@ -149,7 +149,8 @@ class BatchSession(
      * @param connectors The connector tree nodes to use for funding forfeit transaction inputs.
      * @throws IllegalStateException if the commitment tx cannot be read, a connector leaf has
      * no outputs, or updating a boarding input's witness data fails.
-     * @throws IllegalArgumentException if a forfeit-requiring coin has no connector available.
+     * @throws IllegalArgumentException if a required connector, boarding input, or signer
+     * descriptor is missing.
      */
     override suspend fun onBatchFinalization(
         event: BatchEvent.BatchFinalizationEvent,

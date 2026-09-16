@@ -13,6 +13,12 @@ class UnilateralPathArkTapScript(
     private val ownersMultisig: NofNMultisigTapScript,
     private val condition: ArkTapScript? = null,
 ) : ArkTapScript {
+    /**
+     * Builds the optional condition, relative timeout, and owner signature checks for this path.
+     *
+     * A non-empty condition is followed by `OP_VERIFY` before the timeout is enforced with
+     * `OP_CHECKSEQUENCEVERIFY`.
+     */
     override fun buildScript(): ByteArray {
         val conditionScript = condition?.buildScript() ?: byteArrayOf()
         val conditionASM = Script.parse(conditionScript).toMutableList()
@@ -32,6 +38,16 @@ class UnilateralPathArkTapScript(
     }
 
     companion object {
+        /**
+         * Reconstructs a unilateral path from its serialized Tapscript.
+         *
+         * Any operations before `OP_VERIFY` become the optional condition. The timeout is decoded
+         * from the value immediately preceding `OP_CHECKSEQUENCEVERIFY`, and the operations after
+         * `OP_DROP` are parsed as the owner multisignature script.
+         *
+         * @throws IllegalArgumentException If required timeout or signature operations are absent,
+         * or the owner multisignature script is invalid.
+         */
         fun parse(script: ByteArray): UnilateralPathArkTapScript {
             val scriptASM = Script.parse(script)
 
