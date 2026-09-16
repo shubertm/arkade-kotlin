@@ -37,6 +37,7 @@ class HashLockedArkPaymentContract(
             HashLockTapScript.HashLockType.SHA256 -> sha256(preimage)
         }
 
+    /** Returns the preimage claim and user-only unilateral scripts, in that order. */
     override fun getTapLeafScripts(): List<ByteArray> {
         val userPubKey = pubKeyFromTaprootDescriptor(userDescriptor).toXOnlyPubKey()
         val unilateralScript = csvSigScript(exitDelay, userPubKey)
@@ -48,6 +49,9 @@ class HashLockedArkPaymentContract(
         )
     }
 
+    /**
+     * Returns the descriptors, delay, hex-encoded preimage, and hash algorithm for reconstruction.
+     */
     override fun getAdditionalData(): Map<String, String> {
         requireNotNull(serverDescriptor) { "Invalid server descriptor" }
         return mapOf(
@@ -59,6 +63,9 @@ class HashLockedArkPaymentContract(
         )
     }
 
+    /**
+     * Converts [vtxo] to a user-signed claim coin carrying the preimage in its script witness.
+     */
     override suspend fun toArkCoin(vtxo: Vtxo.Data): ArkCoin {
         val witness = ScriptWitness(listOf(ByteVector(preimage)))
         return ArkCoin(
@@ -80,6 +87,7 @@ class HashLockedArkPaymentContract(
         )
     }
 
+    /** Returns the unilateral leaf and its control block as a spending path. */
     fun unilateralPath(): ScriptSpendingPath {
         val scripts = getTapLeafScripts()
         val unilateralScript = scripts[1]
@@ -87,6 +95,7 @@ class HashLockedArkPaymentContract(
         return ScriptSpendingPath(unilateralScript, controlBlock)
     }
 
+    /** Returns the preimage claim leaf and its control block as a spending path. */
     fun claimPath(): ScriptSpendingPath {
         val scripts = getTapLeafScripts()
         val claimScript = scripts[0]
@@ -94,6 +103,7 @@ class HashLockedArkPaymentContract(
         return ScriptSpendingPath(claimScript, controlBlock)
     }
 
+    /** Builds the hash-locked leaf requiring the preimage plus user and server signatures. */
     private fun claimScript(): ByteArray {
         val hashLockScriptBytes = HashLockTapScript(hash, hashLockType).buildScript()
 
@@ -120,6 +130,12 @@ class HashLockedArkPaymentContract(
     companion object {
         const val TYPE = "HashLockPaymentContract"
 
+        /**
+         * Reconstructs a hash-locked payment contract from its serialized fields.
+         *
+         * @throws IllegalArgumentException If a required field is missing, the exit delay is not
+         * a valid `Long`, the preimage is not valid hexadecimal, or the hash-lock type is unknown.
+         */
         fun parse(
             walletId: String,
             data: Map<String, String>,

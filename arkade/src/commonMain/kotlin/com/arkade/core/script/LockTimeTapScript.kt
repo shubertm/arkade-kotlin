@@ -8,6 +8,11 @@ import fr.acinq.bitcoin.Script
 class LockTimeTapScript(
     private val lockTime: Long,
 ) : ArkTapScript {
+    /**
+     * Builds a script that enforces [lockTime] with `OP_CHECKLOCKTIMEVERIFY` and drops it.
+     *
+     * @throws IllegalArgumentException If [lockTime] is not positive.
+     */
     override fun buildScript(): ByteArray {
         require(lockTime > 0) { "Lock time must be positive" }
         val lockTimePush =

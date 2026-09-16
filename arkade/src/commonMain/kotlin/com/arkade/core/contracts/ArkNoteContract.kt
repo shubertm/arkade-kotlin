@@ -26,14 +26,19 @@ class ArkNoteContract(
     val hash = sha256(preimage)
     val outpoint = OutPoint(TxId(hash), 0)
 
+    /** Returns the SHA-256 hash-lock leaf used to claim this note. */
     override fun getTapLeafScripts(): List<ByteArray> = listOf(claimScript())
 
+    /** Returns the hex-encoded preimage and decimal amount used to reconstruct this note. */
     override fun getAdditionalData(): Map<String, String> =
         mapOf(
             "preimage" to preimage.toHexString(),
             "amount" to amount.toString(),
         )
 
+    /**
+     * Converts [vtxo] to a swept claim coin using this note's derived [outpoint] and preimage.
+     */
     override suspend fun toArkCoin(vtxo: Vtxo.Data): ArkCoin =
         ArkCoin(
             walletId,
@@ -53,12 +58,14 @@ class ArkNoteContract(
             vtxo.assets,
         )
 
+    /** Returns the note's hash-lock leaf and its control block as a spending path. */
     fun claimPath(): ScriptSpendingPath {
         val script = claimScript()
         val controlBlock = getControlBlock(script)
         return ScriptSpendingPath(script, controlBlock)
     }
 
+    /** Builds the SHA-256 hash-lock leaf for [preimage]. */
     private fun claimScript(): ByteArray {
         val hashLock = HashLockTapScript(hash, HashLockTapScript.HashLockType.SHA256)
         return hashLock.buildScript()
@@ -70,6 +77,12 @@ class ArkNoteContract(
         private const val PREIMAGE_SIZE = 32
         private const val AMOUNT_LENGTH = 4
 
+        /**
+         * Reconstructs a note contract from its decimal amount and hex-encoded preimage.
+         *
+         * @throws IllegalArgumentException If the amount or preimage is missing, the amount is
+         * not an `Int`, or the preimage is invalid hexadecimal or does not decode to 32 bytes.
+         */
         fun parse(
             walletId: String,
             data: Map<String, String>,
@@ -84,6 +97,12 @@ class ArkNoteContract(
             return ArkNoteContract(walletId, amount, preimage)
         }
 
+        /**
+         * Decodes a Base58 Ark note containing a 32-byte preimage and four-byte signed amount.
+         *
+         * @throws IllegalArgumentException If [note] has the wrong prefix, an invalid Base58
+         * payload, or the wrong decoded length.
+         */
         fun parse(
             walletId: String,
             note: String,

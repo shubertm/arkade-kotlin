@@ -65,6 +65,10 @@ class VHTLCContract(
 
     override val defaultScope: ContractScope = ContractScope.OFF_CHAIN
 
+    /**
+     * Returns all supported leaves in claim, cooperative refund, absolute refund, unilateral
+     * claim, unilateral refund, and sender-only unilateral refund order.
+     */
     override fun getTapLeafScripts(): List<ByteArray> {
         val claimScript = claimScript()
         val cooperativeScript = cooperativeScript()
@@ -83,6 +87,12 @@ class VHTLCContract(
         )
     }
 
+    /**
+     * Returns the descriptors, hash, absolute refund lock, and unilateral delays for this contract.
+     *
+     * The hex-encoded preimage is included only when this instance was constructed or parsed with
+     * one.
+     */
     override fun getAdditionalData(): Map<String, String> {
         val data =
             mutableMapOf(
@@ -101,6 +111,18 @@ class VHTLCContract(
         return data
     }
 
+    /**
+     * Selects a claim or sender-only refund coin for [vtxo].
+     *
+     * When a preimage is available, the returned coin uses the receiver descriptor, claim path,
+     * and preimage witness. Otherwise, this uses [chainTimeProvider] to select the sender-only
+     * refund path once [refundLockTime] has passed: timestamp locks require the current chain time
+     * to be strictly later, while height locks allow the matching height.
+     *
+     * @throws IllegalArgumentException If a chain-time provider is required but has not been set.
+     * @throws UnsupportedOperationException If no preimage is available and the refund lock has
+     * not elapsed.
+     */
     override suspend fun toArkCoin(vtxo: Vtxo.Data): ArkCoin {
         if (preimage != null) {
             Log.info(
@@ -162,6 +184,11 @@ class VHTLCContract(
         throw UnsupportedOperationException("Cannot transform contract in coin")
     }
 
+    /**
+     * Converts an unspent [vtxo] to a sender-signed coin using the cooperative refund path.
+     *
+     * @throws IllegalStateException If [vtxo] is already spent.
+     */
     fun toCoopRefundCoin(vtxo: Vtxo.Data): ArkCoin {
         if (vtxo.isSpent) {
             throw IllegalStateException("VTXO is already spent")
@@ -185,6 +212,7 @@ class VHTLCContract(
         )
     }
 
+    /** Returns the preimage claim leaf and its control block as a spending path. */
     fun claimPath(): ScriptSpendingPath {
         val scripts = getTapLeafScripts()
         val claimScript = scripts[0]
@@ -192,6 +220,7 @@ class VHTLCContract(
         return ScriptSpendingPath(claimScript, controlBlock)
     }
 
+    /** Returns the cooperative refund leaf and its control block as a spending path. */
     fun cooperativePath(): ScriptSpendingPath {
         val scripts = getTapLeafScripts()
         val cooperativeScript = scripts[1]
@@ -199,16 +228,19 @@ class VHTLCContract(
         return ScriptSpendingPath(cooperativeScript, controlBlock)
     }
 
+    /** Returns the absolute sender-only refund leaf and its control block as a spending path. */
     fun refundWithoutReceiverPath(): ScriptSpendingPath {
         val script = getTapLeafScripts()[2]
         val controlBlock = getControlBlock(script)
         return ScriptSpendingPath(script, controlBlock)
     }
 
+    /** Sets the blockchain provider used to decide whether a refund lock has elapsed. */
     fun setChainTimeProvider(provider: Blockchain) {
         chainTimeProvider = provider
     }
 
+    /** Builds the hash-locked leaf requiring the preimage plus receiver and server signatures. */
     private fun claimScript(): ByteArray {
         val hashLockScriptBytes = HashLockTapScript(hash).buildScript()
 
@@ -226,6 +258,7 @@ class VHTLCContract(
         return collaborativeScript.buildScript()
     }
 
+    /** Builds the leaf requiring sender, receiver, and server signatures. */
     private fun cooperativeScript(): ByteArray {
         val owners =
             listOf(
@@ -243,6 +276,7 @@ class VHTLCContract(
         return collaborativeScript.buildScript()
     }
 
+    /** Builds the absolute-lock refund leaf requiring sender and server signatures. */
     private fun refundWithoutReceiverScript(): ByteArray {
         val owners = listOf(pubKeyFromTaprootDescriptor(senderDescriptor).toXOnlyPubKey())
         val multisigScript = NofNMultisigTapScript(owners).buildScript()
@@ -261,6 +295,7 @@ class VHTLCContract(
         return collaborativeScript.buildScript()
     }
 
+    /** Builds the delayed preimage claim leaf requiring the receiver signature. */
     private fun unilateralClaimScript(): ByteArray {
         val hashLockScript = HashLockTapScript(hash)
         val receiverMultisigScript =
@@ -276,6 +311,7 @@ class VHTLCContract(
         return unilateralClaimScript.buildScript()
     }
 
+    /** Builds the delayed refund leaf requiring both sender and receiver signatures. */
     private fun unilateralRefundScript(): ByteArray {
         val unilateralClaimScript =
             UnilateralPathArkTapScript(
@@ -290,6 +326,7 @@ class VHTLCContract(
         return unilateralClaimScript.buildScript()
     }
 
+    /** Builds the delayed sender-only refund leaf. */
     private fun unilateralRefundWithoutReceiverScript(): ByteArray {
         val unilateralClaimScript =
             UnilateralPathArkTapScript(
@@ -305,6 +342,15 @@ class VHTLCContract(
         const val TYPE = "HTLC"
         const val LOG_TAG = "VHTLCContract"
 
+        /**
+         * Reconstructs a VHTLC from its serialized descriptors, hash, locks, and optional preimage.
+         *
+         * When present, the preimage is decoded from hexadecimal and must match the stored HASH160
+         * digest.
+         *
+         * @throws IllegalArgumentException If a required field is missing, a lock is not a valid
+         * `Long`, hexadecimal data is invalid, or the preimage does not match the hash.
+         */
         fun parse(
             walletId: String,
             data: Map<String, String>,

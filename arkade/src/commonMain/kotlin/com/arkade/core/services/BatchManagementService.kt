@@ -264,11 +264,11 @@ class BatchManagementService(
      * Builds and starts a [BatchSession] for [intent]'s VTXOs, then confirms the intent's
      * registration with the server.
      *
-     * Loads [intent]'s VTXOs (including already-spent ones, so unrolled/swept coins are still
-     * resolvable) and their backing contracts, converts each to an [com.arkade.core.coins.ArkCoin],
-     * and creates and [BatchSession.init]-ializes a session for them. The session is registered
-     * in [activeBatchSessions] and its batch id is associated with [intent]'s id in
-     * [batchIdToIntentIds] before the registration is confirmed via
+     * Loads [intent]'s VTXOs and their backing contracts, excludes VTXOs already marked as spent,
+     * and converts the remaining VTXOs to [com.arkade.core.coins.ArkCoin] instances. It then creates
+     * and [BatchSession.init]-ializes a session for those coins. The session is registered in
+     * [activeBatchSessions] and its batch id is associated with [intent]'s id in [batchIdToIntentIds]
+     * before the registration is confirmed via
      * [ArkadeClient.confirmIntentRegistration] and the intent is persisted via
      * [Wallet.saveIntent].
      *
