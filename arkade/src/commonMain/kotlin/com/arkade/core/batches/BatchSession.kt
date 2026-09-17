@@ -201,7 +201,8 @@ class BatchSession(
                     forfeitDestination = serverInfo.forfeitAddress,
                 )
 
-            val signedForfeitTx = wallet.sign(vtxoCoin.signerDescriptor, forfeitTx, arrayOf(0))
+            val signerDescriptor = requireNotNull(vtxoCoin.signerDescriptor) { "Missing VTXO coin signer descriptor" }
+            val signedForfeitTx = wallet.sign(signerDescriptor, forfeitTx, arrayOf(0))
             val signedForfeitTxBytes = Transaction.write(signedForfeitTx)
             signedForfeitTxs.add(Base64.encode(signedForfeitTxBytes))
         }
@@ -222,8 +223,9 @@ class BatchSession(
                             boardingCoin.txOut,
                         )?.getOrElse { throw IllegalStateException("Failed to update boarding input witness") }
 
+                val signerDescriptor = requireNotNull(boardingCoin.signerDescriptor) { "Missing boarding coin signer descriptor" }
                 signedCommitmentPSBT =
-                    Psbt(wallet.sign(boardingCoin.signerDescriptor, signedCommitmentPSBT!!, arrayOf(outpoint)))
+                    Psbt(wallet.sign(signerDescriptor, signedCommitmentPSBT!!, arrayOf(outpoint)))
             }
         }
 

@@ -25,6 +25,8 @@ class GenericArkContract(
 ) : ArkContract(walletId, serverDescriptor) {
     override val type: String = "generic"
 
+    override val defaultScope: ContractScope = ContractScope.OFF_CHAIN
+
     override fun getTapLeafScripts(): List<ByteArray> = tapLeafScripts
 
     override fun getAdditionalData(): Map<String, String> = additionalData ?: emptyMap()
