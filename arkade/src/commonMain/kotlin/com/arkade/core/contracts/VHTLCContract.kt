@@ -159,7 +159,7 @@ class VHTLCContract(
             )
         }
 
-        throw UnsupportedOperationException("Cannot transform contract in coin")
+        throw UnsupportedOperationException("Cannot transform contract into coin")
     }
 
     fun toCoopRefundCoin(vtxo: Vtxo.Data): ArkCoin {
