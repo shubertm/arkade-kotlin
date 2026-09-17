@@ -131,7 +131,7 @@ class VHTLCContract(
 
         val refundElapsed =
             if (refundLockTime.isTimeLock()) {
-                refundLockTime < chainTimeProvider.getMedianTimePast()
+                refundLockTime <= chainTimeProvider.getMedianTimePast()
             } else {
                 chainTimeProvider.getChainTime().height >= refundLockTime
             }
