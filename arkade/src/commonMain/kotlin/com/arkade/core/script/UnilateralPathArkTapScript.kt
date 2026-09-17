@@ -13,7 +13,7 @@ class UnilateralPathArkTapScript(
     private val condition: ArkTapScript? = null,
 ) : ArkTapScript {
     override fun buildScript(): ByteArray {
-        require(timeout >= 0) { "Invalid timeout, must not be negative" }
+        require(timeout >= 0 && (timeout and 0x0040FFFFL) == timeout) { "Invalid timeout, must not be negative" }
 
         val conditionScript = condition?.buildScript() ?: byteArrayOf()
         val conditionASM = Script.parse(conditionScript).toMutableList()
