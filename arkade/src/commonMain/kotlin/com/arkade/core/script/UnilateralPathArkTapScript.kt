@@ -52,8 +52,10 @@ class UnilateralPathArkTapScript(
             val sequencePush = scriptASM[csvIndex - 1] as OP_PUSHDATA
             val timeout = Script.decodeNumber(sequencePush.data, true, 5)
 
-            require(scriptASM.last() == OP_CHECKSIG) { "Invalid unilateral path script" }
-            val multisigASM = scriptASM.subList(scriptASM.indexOf(OP_DROP) + 1, scriptASM.size)
+            require(scriptASM.last() == OP_CHECKSIG && csvIndex + 1 < scriptASM.size && scriptASM[csvIndex + 1] == OP_DROP) {
+                "Invalid unilateral path script"
+            }
+            val multisigASM = scriptASM.subList(csvIndex + 2, scriptASM.size)
 
             return UnilateralPathArkTapScript(
                 timeout,
