@@ -6,7 +6,6 @@ import fr.acinq.bitcoin.OP_DROP
 import fr.acinq.bitcoin.OP_PUSHDATA
 import fr.acinq.bitcoin.OP_VERIFY
 import fr.acinq.bitcoin.Script
-import fr.acinq.bitcoin.ScriptElt
 
 class UnilateralPathArkTapScript(
     private val timeout: Long,
@@ -22,13 +21,14 @@ class UnilateralPathArkTapScript(
             conditionASM.add(OP_VERIFY)
         }
 
+        conditionASM.add(OP_PUSHDATA(Script.encodeNumber(timeout)))
+        conditionASM.add(OP_CHECKSEQUENCEVERIFY)
+        conditionASM.add(OP_DROP)
+
         val multisigASM = Script.parse(ownersMultisig.buildScript()).toMutableList()
         multisigASM.removeAt(multisigASM.lastIndex)
         multisigASM.add(OP_CHECKSIG)
 
-        conditionASM.add(OP_PUSHDATA(Script.encodeNumber(timeout)))
-        conditionASM.add(OP_CHECKSEQUENCEVERIFY)
-        conditionASM.add(OP_DROP)
         conditionASM.addAll(multisigASM)
         return Script.write(conditionASM)
     }
@@ -37,16 +37,22 @@ class UnilateralPathArkTapScript(
         fun parse(script: ByteArray): UnilateralPathArkTapScript {
             val scriptASM = Script.parse(script)
 
-            var conditionASM = listOf<ScriptElt>()
-            if (scriptASM.contains(OP_VERIFY)) {
-                conditionASM = scriptASM.subList(0, scriptASM.indexOf(OP_VERIFY))
-            }
-
             require(scriptASM.contains(OP_CHECKSEQUENCEVERIFY) && scriptASM.contains(OP_DROP)) { "Invalid unilateral path script" }
-            val sequencePush = scriptASM[scriptASM.indexOf(OP_CHECKSEQUENCEVERIFY) - 1] as OP_PUSHDATA
+
+            val csvIndex = scriptASM.indexOf(OP_CHECKSEQUENCEVERIFY)
+            val lastOpVerifyIndex = csvIndex - 2
+
+            val conditionASM =
+                if (lastOpVerifyIndex >= 0 && scriptASM[lastOpVerifyIndex] == OP_VERIFY) {
+                    scriptASM.subList(0, lastOpVerifyIndex)
+                } else {
+                    emptyList()
+                }
+
+            val sequencePush = scriptASM[csvIndex - 1] as OP_PUSHDATA
             val timeout = Script.decodeNumber(sequencePush.data, true, 5)
 
-            require(scriptASM.contains(OP_CHECKSIG)) { "Invalid unilateral path script" }
+            require(scriptASM.last() == OP_CHECKSIG) { "Invalid unilateral path script" }
             val multisigASM = scriptASM.subList(scriptASM.indexOf(OP_DROP) + 1, scriptASM.size)
 
             return UnilateralPathArkTapScript(
