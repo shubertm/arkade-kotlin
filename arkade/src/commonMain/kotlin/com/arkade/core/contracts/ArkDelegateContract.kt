@@ -56,7 +56,7 @@ class ArkDelegateContract(
         return data
     }
 
-    /** Converts [vtxo] to a user-signed coin that uses the collaborative spending path. */
+    /** Converts [vtxo] to a user-signed [ArkCoin] that uses the collaborative spending path. */
     override suspend fun toArkCoin(vtxo: Vtxo.Data): ArkCoin =
         ArkCoin(
             walletId,

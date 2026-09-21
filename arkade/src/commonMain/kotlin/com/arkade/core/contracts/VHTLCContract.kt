@@ -112,7 +112,7 @@ class VHTLCContract(
     }
 
     /**
-     * Selects a claim or sender-only refund coin for [vtxo].
+     * Selects a claim or sender-only refund [ArkCoin] for [vtxo].
      *
      * When a preimage is available, the returned coin uses the receiver descriptor, claim path,
      * and preimage witness. Otherwise, this uses [chainTimeProvider] to select the sender-only
@@ -185,7 +185,7 @@ class VHTLCContract(
     }
 
     /**
-     * Converts an unspent [vtxo] to a sender-signed coin using the cooperative refund path.
+     * Converts an unspent [vtxo] to a sender-signed [ArkCoin] using the cooperative refund path.
      *
      * @throws IllegalStateException If [vtxo] is already spent.
      */

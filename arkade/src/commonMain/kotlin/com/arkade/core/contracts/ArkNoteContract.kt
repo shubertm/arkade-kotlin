@@ -37,7 +37,7 @@ class ArkNoteContract(
         )
 
     /**
-     * Converts [vtxo] to a swept claim coin using this note's derived [outpoint] and preimage.
+     * Converts [vtxo] to a swept claim [ArkCoin] using this note's derived [outpoint] and preimage.
      */
     override suspend fun toArkCoin(vtxo: Vtxo.Data): ArkCoin =
         ArkCoin(

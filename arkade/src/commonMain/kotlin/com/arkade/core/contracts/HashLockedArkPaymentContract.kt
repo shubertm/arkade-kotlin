@@ -64,7 +64,7 @@ class HashLockedArkPaymentContract(
     }
 
     /**
-     * Converts [vtxo] to a user-signed claim coin carrying the preimage in its script witness.
+     * Converts [vtxo] to a user-signed claim [ArkCoin] carrying the preimage in its script witness.
      */
     override suspend fun toArkCoin(vtxo: Vtxo.Data): ArkCoin {
         val witness = ScriptWitness(listOf(ByteVector(preimage)))
