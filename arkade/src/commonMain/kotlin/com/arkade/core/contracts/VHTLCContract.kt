@@ -149,12 +149,13 @@ class VHTLCContract(
             )
         }
 
-        val chainTime = requireNotNull(chainTimeProvider) { "Missing chain time provider" }.getChainTime()
+        val chainTimeProvider = requireNotNull(chainTimeProvider) { "Missing chain time provider" }
+
         val refundElapsed =
             if (refundLockTime.isTimeLock()) {
-                refundLockTime < chainTime.time
+                refundLockTime <= chainTimeProvider.getMedianTimePast()
             } else {
-                chainTime.height >= refundLockTime
+                chainTimeProvider.getChainTime().height >= refundLockTime
             }
 
         if (refundElapsed) {
@@ -181,7 +182,7 @@ class VHTLCContract(
             )
         }
 
-        throw UnsupportedOperationException("Cannot transform contract in coin")
+        throw UnsupportedOperationException("Cannot transform contract into coin")
     }
 
     /**

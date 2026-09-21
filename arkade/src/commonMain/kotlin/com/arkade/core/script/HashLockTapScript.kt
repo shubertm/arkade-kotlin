@@ -11,9 +11,15 @@ class HashLockTapScript(
     val hashLockType: HashLockType =
         if (hash.size == 20) HashLockType.HASH160 else HashLockType.SHA256,
 ) : ArkTapScript {
+    init {
+        require((hashLockType == HashLockType.HASH160 && hash.size == 20) || (hashLockType == HashLockType.SHA256 && hash.size == 32)) {
+            "Invalid hash length for $hashLockType"
+        }
+    }
+    
     /**
-     * Builds a script that hashes the witness value with [hashLockType] and compares it to [hash].
-     */
+    * Builds a script that hashes the witness value with [hashLockType] and compares it to [hash].
+    */
     override fun buildScript(): ByteArray {
         val asm =
             listOf(
