@@ -11,6 +11,7 @@ import fr.acinq.bitcoin.XonlyPublicKey
 class NofNMultisigTapScript(
     private val owners: List<XonlyPublicKey>,
 ) : ArkTapScript {
+    /** Returns a serialized script that verifies a signature for every configured owner. */
     override fun buildScript(): ByteArray {
         val asm = mutableListOf<ScriptElt>()
         owners.forEach { owner ->
@@ -21,6 +22,13 @@ class NofNMultisigTapScript(
     }
 
     companion object {
+        /**
+         * Parses the public keys from a serialized multisignature Tapscript.
+         *
+         * @param script The script containing alternating x-only public keys and signature checks.
+         * @return A multisignature script configured with the parsed owners.
+         * @throws IllegalArgumentException If the script does not contain valid key/check pairs.
+         */
         fun parse(script: ByteArray): NofNMultisigTapScript {
             val owners = mutableListOf<XonlyPublicKey>()
             val asm = Script.parse(script)

@@ -16,7 +16,10 @@ class HashLockTapScript(
             "Invalid hash length for $hashLockType"
         }
     }
-
+    
+    /**
+    * Builds a script that hashes the witness value with [hashLockType] and compares it to [hash].
+    */
     override fun buildScript(): ByteArray {
         val asm =
             listOf(

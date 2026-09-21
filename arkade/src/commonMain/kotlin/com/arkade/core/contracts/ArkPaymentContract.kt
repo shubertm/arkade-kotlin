@@ -18,6 +18,7 @@ class ArkPaymentContract(
 
     override val defaultScope: ContractScope = ContractScope.OFF_CHAIN
 
+    /** Returns the collaborative and user-only unilateral scripts, in that order. */
     override fun getTapLeafScripts(): List<ByteArray> {
         requireNotNull(serverDescriptor) { "Invalid signer descriptor" }
         val serverPubKey = pubKeyFromTaprootDescriptor(serverDescriptor).toXOnlyPubKey()
@@ -27,6 +28,7 @@ class ArkPaymentContract(
         return listOf(collaborativeScript, unilateralScript)
     }
 
+    /** Returns the server, user, and exit-delay fields needed to reconstruct this contract. */
     override fun getAdditionalData(): Map<String, String> {
         requireNotNull(serverDescriptor) { "Invalid signer descriptor" }
         return mapOf(
@@ -36,6 +38,7 @@ class ArkPaymentContract(
         )
     }
 
+    /** Converts [vtxo] to a user-signed [ArkCoin] that uses the collaborative spending path. */
     override suspend fun toArkCoin(vtxo: Vtxo.Data): ArkCoin =
         ArkCoin(
             walletId,
@@ -55,6 +58,7 @@ class ArkPaymentContract(
             assets = vtxo.assets,
         )
 
+    /** Returns the collaborative leaf and its control block as a spending path. */
     private fun collaborativePath(): ScriptSpendingPath {
         val scripts = getTapLeafScripts()
         val collaborativeScript = scripts[0]
@@ -65,6 +69,7 @@ class ArkPaymentContract(
         )
     }
 
+    /** Returns the unilateral leaf and its control block as a spending path. */
     private fun unilateralPath(): ScriptSpendingPath {
         val scripts = getTapLeafScripts()
         val unilateralScript = scripts[1]
@@ -78,6 +83,14 @@ class ArkPaymentContract(
     companion object {
         const val TYPE = "Payment"
 
+        /**
+         * Reconstructs a payment contract from its serialized fields.
+         *
+         * A missing exit delay defaults to zero.
+         *
+         * @throws IllegalArgumentException If a descriptor is missing or blank, or the exit delay
+         * is negative or not a valid `Long` value.
+         */
         fun parse(
             walletId: String,
             data: Map<String, String>,

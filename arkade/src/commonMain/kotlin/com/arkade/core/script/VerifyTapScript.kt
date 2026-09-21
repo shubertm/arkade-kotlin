@@ -4,5 +4,6 @@ import fr.acinq.bitcoin.OP_VERIFY
 import fr.acinq.bitcoin.Script
 
 class VerifyTapScript : ArkTapScript {
+    /** Returns a serialized script containing only `OP_VERIFY`. */
     override fun buildScript(): ByteArray = Script.write(listOf(OP_VERIFY))
 }

@@ -23,6 +23,9 @@ class ArkDelegateContract(
 
     override val defaultScope: ContractScope = ContractScope.OFF_CHAIN
 
+    /**
+     * Returns the collaborative, unilateral-exit, and delegated spending scripts, in that order.
+     */
     override fun getTapLeafScripts(): List<ByteArray> {
         val collaborativeScript = collaborativeScript()
         val exitScript = exitScript()
@@ -34,6 +37,11 @@ class ArkDelegateContract(
         )
     }
 
+    /**
+     * Returns the descriptors and delays needed to reconstruct this contract.
+     *
+     * The `cltv_locktime` entry is omitted when no absolute delegate lock time is configured.
+     */
     override fun getAdditionalData(): Map<String, String> {
         val data =
             mutableMapOf(
@@ -48,6 +56,7 @@ class ArkDelegateContract(
         return data
     }
 
+    /** Converts [vtxo] to a user-signed [ArkCoin] that uses the collaborative spending path. */
     override suspend fun toArkCoin(vtxo: Vtxo.Data): ArkCoin =
         ArkCoin(
             walletId,
@@ -67,6 +76,7 @@ class ArkDelegateContract(
             vtxo.assets,
         )
 
+    /** Returns the collaborative leaf and its control block as a spending path. */
     fun collaborativePath(): ScriptSpendingPath {
         val scripts = getTapLeafScripts()
         val collaborativeScript = scripts[0]
@@ -74,6 +84,7 @@ class ArkDelegateContract(
         return ScriptSpendingPath(collaborativeScript, controlBlock)
     }
 
+    /** Builds the leaf requiring both the user and server signatures. */
     private fun collaborativeScript(): ByteArray {
         val ownerScript =
             NofNMultisigTapScript(
@@ -90,6 +101,7 @@ class ArkDelegateContract(
         return collaborativeScript.buildScript()
     }
 
+    /** Builds the user-only leaf gated by the relative [exitDelay]. */
     private fun exitScript(): ByteArray {
         val ownerScript =
             NofNMultisigTapScript(
@@ -101,6 +113,9 @@ class ArkDelegateContract(
         return unilateralScript.buildScript()
     }
 
+    /**
+     * Builds the server, user, and delegate leaf, gated by [cltvLockTime] when configured.
+     */
     private fun delegateScript(): ByteArray {
         val multisigScript =
             NofNMultisigTapScript(
@@ -132,6 +147,12 @@ class ArkDelegateContract(
     companion object {
         const val TYPE = "Delegate"
 
+        /**
+         * Reconstructs a delegate contract from its serialized fields.
+         *
+         * @throws IllegalArgumentException If a required descriptor or delay is missing, or a
+         * delay is not a valid `Long` value.
+         */
         fun parse(
             walletId: String,
             data: Map<String, String>,
