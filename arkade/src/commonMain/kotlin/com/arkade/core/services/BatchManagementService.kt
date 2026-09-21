@@ -3,6 +3,7 @@ package com.arkade.core.services
 import com.arkade.core.ArkServerInfo
 import com.arkade.core.batches.BatchEvent
 import com.arkade.core.batches.BatchSession
+import com.arkade.core.coins.ArkCoin
 import com.arkade.core.intents.ArkIntent
 import com.arkade.core.intents.IntentState
 import com.arkade.core.intents.RegisterIntentMessage
@@ -263,11 +264,11 @@ class BatchManagementService(
      * Builds and starts a [BatchSession] for [intent]'s VTXOs, then confirms the intent's
      * registration with the server.
      *
-     * Loads [intent]'s VTXOs (including already-spent ones, so unrolled/swept coins are still
-     * resolvable) and their backing contracts, converts each to an [com.arkade.core.coins.ArkCoin],
-     * and creates and [BatchSession.init]-ializes a session for them. The session is registered
-     * in [activeBatchSessions] and its batch id is associated with [intent]'s id in
-     * [batchIdToIntentIds] before the registration is confirmed via
+     * Loads [intent]'s VTXOs and their backing contracts, excludes VTXOs already marked as spent,
+     * and converts the remaining VTXOs to [com.arkade.core.coins.ArkCoin] instances. It then creates
+     * and [BatchSession.init]-ializes a session for those coins. The session is registered in
+     * [activeBatchSessions] and its batch id is associated with [intent]'s id in [batchIdToIntentIds]
+     * before the registration is confirmed via
      * [ArkadeClient.confirmIntentRegistration] and the intent is persisted via
      * [Wallet.saveIntent].
      *
@@ -303,29 +304,31 @@ class BatchManagementService(
                     vtxosScripts,
                 )
 
-            val spendableCoins =
-                intent.vtxos.map { outpoint ->
-                    val vtxo =
-                        vtxos.find { vtxo ->
-                            vtxo.outpoint == outpoint
-                        }
-
-                    if (vtxo == null) {
-                        Log.error(LOG_TAG, "VTXO $outpoint not found in storage for intent $intentId")
-                        throw IllegalArgumentException("VTXO $outpoint not found in storage for intent $intentId")
+            val spendableCoins = mutableListOf<ArkCoin>()
+            intent.vtxos.forEach { outpoint ->
+                val vtxo =
+                    vtxos.find { vtxo ->
+                        vtxo.outpoint == outpoint
                     }
 
-                    val contract =
-                        contracts.find { contract ->
-                            contract.getScriptPubKey(serverInfo.network) == vtxo.script
-                        }
-                    if (contract == null) {
-                        Log.error(LOG_TAG, "Contract for VTXO $outpoint not found in storage for intent $intentId")
-                        throw IllegalArgumentException("Contract for VTXO $outpoint not found in storage for intent $intentId")
-                    }
-
-                    contract.toArkCoin(vtxo)
+                if (vtxo == null) {
+                    Log.error(LOG_TAG, "VTXO $outpoint not found in storage for intent $intentId")
+                    throw IllegalArgumentException("VTXO $outpoint not found in storage for intent $intentId")
                 }
+
+                val contract =
+                    contracts.find { contract ->
+                        contract.getScriptPubKey(serverInfo.network) == vtxo.script
+                    }
+                if (contract == null) {
+                    Log.error(LOG_TAG, "Contract for VTXO $outpoint not found in storage for intent $intentId")
+                    throw IllegalArgumentException("Contract for VTXO $outpoint not found in storage for intent $intentId")
+                }
+
+                if (vtxo.isSpent) return@forEach
+
+                spendableCoins.add(contract.toArkCoin(vtxo))
+            }
             val batchSession =
                 BatchSession(
                     client,

@@ -149,7 +149,8 @@ class BatchSession(
      * @param connectors The connector tree nodes to use for funding forfeit transaction inputs.
      * @throws IllegalStateException if the commitment tx cannot be read, a connector leaf has
      * no outputs, or updating a boarding input's witness data fails.
-     * @throws IllegalArgumentException if a forfeit-requiring coin has no connector available.
+     * @throws IllegalArgumentException if a required connector, boarding input, or signer
+     * descriptor is missing.
      */
     override suspend fun onBatchFinalization(
         event: BatchEvent.BatchFinalizationEvent,
@@ -201,7 +202,8 @@ class BatchSession(
                     forfeitDestination = serverInfo.forfeitAddress,
                 )
 
-            val signedForfeitTx = wallet.sign(vtxoCoin.signerDescriptor, forfeitTx, arrayOf(0))
+            val signerDescriptor = requireNotNull(vtxoCoin.signerDescriptor) { "Missing VTXO coin signer descriptor" }
+            val signedForfeitTx = wallet.sign(signerDescriptor, forfeitTx, arrayOf(0))
             val signedForfeitTxBytes = Transaction.write(signedForfeitTx)
             signedForfeitTxs.add(Base64.encode(signedForfeitTxBytes))
         }
@@ -222,8 +224,9 @@ class BatchSession(
                             boardingCoin.txOut,
                         )?.getOrElse { throw IllegalStateException("Failed to update boarding input witness") }
 
+                val signerDescriptor = requireNotNull(boardingCoin.signerDescriptor) { "Missing boarding coin signer descriptor" }
                 signedCommitmentPSBT =
-                    Psbt(wallet.sign(boardingCoin.signerDescriptor, signedCommitmentPSBT!!, arrayOf(outpoint)))
+                    Psbt(wallet.sign(signerDescriptor, signedCommitmentPSBT!!, arrayOf(outpoint)))
             }
         }
 
