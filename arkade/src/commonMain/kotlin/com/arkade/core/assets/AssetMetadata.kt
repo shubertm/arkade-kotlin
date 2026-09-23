@@ -1,6 +1,7 @@
 package com.arkade.core.assets
 
 import fr.acinq.bitcoin.io.ByteArrayInput
+import fr.acinq.bitcoin.io.ByteArrayOutput
 
 /**
  * An opaque key/value pair attached to an [AssetGroup], used to carry auxiliary,
@@ -21,6 +22,18 @@ class AssetMetadata(
     fun validate() {
         require(key.isNotEmpty()) { "Missing metadata key" }
         require(value.isNotEmpty()) { "Missing metadata value" }
+    }
+
+    fun serialize(): ByteArray {
+        validate()
+        val output = ByteArrayOutput()
+        serializeTo(output)
+        return output.toByteArray()
+    }
+
+    fun serializeTo(output: ByteArrayOutput) {
+        output.writeVarBytes(key)
+        output.writeVarBytes(value)
     }
 
     companion object {

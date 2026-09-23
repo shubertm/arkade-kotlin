@@ -13,3 +13,23 @@ fun ByteArrayOutput.writeUInt16LE(value: Int) {
     write(value.toByte().toInt())
     write((value shr 8).toByte().toInt())
 }
+
+fun ByteArrayOutput.writeVarInt(value: Long) {
+    do {
+        var byte = (value and 0x7F).toByte()
+        value ushr 7
+        if (value > 0L) {
+            byte = (byte.toInt() or 0x80).toByte()
+        }
+        write(byte.toInt())
+    } while (value > 0L)
+}
+
+fun ByteArrayOutput.writeBytes(bytes: ByteArray) {
+    write(bytes)
+}
+
+fun ByteArrayOutput.writeVarBytes(bytes: ByteArray) {
+    writeVarInt(bytes.size.toLong())
+    writeBytes(bytes)
+}

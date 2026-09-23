@@ -1,6 +1,7 @@
 package com.arkade.core.assets
 
 import fr.acinq.bitcoin.io.ByteArrayInput
+import fr.acinq.bitcoin.io.ByteArrayOutput
 
 /**
  * References an asset either by its globally unique [AssetId] or by the index of the
@@ -19,6 +20,25 @@ class AssetRef(
     val assetId: AssetId?,
     val groupIndex: Int?,
 ) {
+    fun serialize(): ByteArray {
+        val output = ByteArrayOutput()
+        serializeTo(output)
+        return output.toByteArray()
+    }
+
+    fun serializeTo(output: ByteArrayOutput) {
+        output.write(type.ordinal)
+        when (type) {
+            Type.BY_ID -> {
+                assetId!!.serializeTo(output)
+            }
+            Type.BY_GROUP -> {
+                output.writeUInt16LE(groupIndex!!)
+            }
+            Type.UNSPECIFIED -> throw IllegalStateException("Cannot serialize unspecified asset ref")
+        }
+    }
+
     /** The encoding used to identify the referenced asset. */
     enum class Type {
         /** No reference; not a valid value for a parsed [AssetRef]. */

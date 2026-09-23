@@ -1,6 +1,7 @@
 package com.arkade.core.assets
 
 import fr.acinq.bitcoin.io.ByteArrayInput
+import fr.acinq.bitcoin.io.ByteArrayOutput
 
 /**
  * A group of asset [inputs] and [outputs] within a transaction's asset [Packet], either issuing
@@ -68,7 +69,85 @@ class AssetGroup(
         }
     }
 
+    fun serialize(): ByteArray {
+        validate()
+        val output = ByteArrayOutput()
+        serializeTo(output)
+        return output.toByteArray()
+    }
+
+    fun serializeTo(output: ByteArrayOutput) {
+        var presence = 0
+        if (assetId != null) {
+            presence = presence or MASK_ASSET_ID
+        }
+        if (controlAsset != null) {
+            presence = presence or MASK_CONTROL_ASSET
+        }
+        if (!metadata.isNullOrEmpty()) {
+            presence = presence or MASK_METADATA
+        }
+        output.write(presence)
+
+        assetId?.serializeTo(output)
+
+        controlAsset?.serializeTo(output)
+
+        if (!metadata.isNullOrEmpty()) {
+            serializeMetadata(output)
+        }
+
+        output.writeVarInt(inputs.size.toLong())
+        inputs.forEach { input ->
+            input.serializeTo(output)
+        }
+
+        output.writeVarInt(outputs.size.toLong())
+        outputs.forEach { assetOutput ->
+            assetOutput.serializeTo(output)
+        }
+    }
+
+    fun toBatchLeafAssetGroup(intentTxId: ByteArray): AssetGroup {
+        val leafInput = AssetInput.createIntent(intentTxId, 0, 0)
+        return AssetGroup(
+            assetId,
+            controlAsset,
+            listOf(leafInput),
+            outputs,
+            metadata,
+        )
+    }
+
+    override fun toString(): String = serialize().toHexString()
+
+    private fun serializeMetadata(output: ByteArrayOutput) {
+        output.writeVarInt(metadata?.size?.toLong()!!)
+        metadata.forEach { metadata ->
+            metadata.serializeTo(output)
+        }
+    }
+
     companion object {
+        fun create(
+            assetId: AssetId?,
+            controlAsset: AssetRef?,
+            inputs: List<AssetInput>,
+            outputs: List<AssetOutput>,
+            metadata: List<AssetMetadata>?,
+        ): AssetGroup {
+            val group =
+                AssetGroup(
+                    assetId,
+                    controlAsset,
+                    inputs,
+                    outputs,
+                    metadata,
+                )
+            group.validate()
+            return group
+        }
+
         /**
          * Parses an [AssetGroup] from [input]'s binary representation.
          *
