@@ -64,15 +64,15 @@ class AssetInput(
             /**
              * Maps the single-byte wire encoding to a [Type].
              *
-             * @param value The encoded type byte: `0` for [LOCAL], `1` for [INTENT], `2` for
-             * [UNSPECIFIED].
+             * @param value The encoded type byte: `0` for [UNSPECIFIED], `1` for [LOCAL], `2` for
+             * [INTENT].
              * @throws IllegalArgumentException if [value] is not one of the above.
              */
             fun fromByte(value: Byte): Type =
                 when (value) {
-                    0.toByte() -> LOCAL
-                    1.toByte() -> INTENT
-                    2.toByte() -> UNSPECIFIED
+                    0.toByte() -> UNSPECIFIED
+                    1.toByte() -> LOCAL
+                    2.toByte() -> INTENT
                     else -> throw IllegalArgumentException("Invalid asset input type: $value")
                 }
         }
