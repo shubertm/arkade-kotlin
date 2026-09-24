@@ -24,7 +24,7 @@ class AssetId(
     fun validate() {
         require(txId.isNotEmpty()) { "Missing transaction id" }
         require(txId.size == TX_HASH_SIZE) { "Invalid txid length" }
-        require(groupIndex >= 0) { "Group index cannot be negative" }
+        require(groupIndex in 0..0xFFFF) { "Group index cannot be negative" }
     }
 
     /** Serializes this asset id to its fixed-size binary representation. */

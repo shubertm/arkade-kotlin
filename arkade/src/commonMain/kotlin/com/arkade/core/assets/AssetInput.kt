@@ -24,7 +24,7 @@ class AssetInput(
     val txId: ByteArray? = null,
 ) {
     private fun validate() {
-        require(vin >= 0) { "Invalid vin: $vin" }
+        require(vin in 0..0xFFFF) { "Invalid vin: $vin" }
         if (type == Type.INTENT) {
             requireNotNull(txId) { "Missing input intent txid" }
             require(txId.size == TX_HASH_SIZE) { "Invalid intent txid length" }
