@@ -109,14 +109,18 @@ class AssetGroup(
     }
 
     fun toBatchLeafAssetGroup(intentTxId: ByteArray): AssetGroup {
+        require(!isIssuance) { "Cannot create leaf asset group for issuance" }
         val leafInput = AssetInput.createIntent(intentTxId, 0, 0)
-        return AssetGroup(
-            assetId,
-            controlAsset,
-            listOf(leafInput),
-            outputs,
-            metadata,
-        )
+        val group =
+            AssetGroup(
+                assetId,
+                controlAsset,
+                listOf(leafInput),
+                outputs,
+                metadata,
+            )
+        group.validate()
+        return group
     }
 
     override fun toString(): String = serialize().toHexString()
