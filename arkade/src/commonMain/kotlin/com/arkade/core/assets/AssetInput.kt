@@ -24,6 +24,7 @@ class AssetInput(
     val txId: ByteArray? = null,
 ) {
     private fun validate() {
+        require(type != Type.UNSPECIFIED) { "Asset input type not specified" }
         require(vin in 0..0xFFFF) { "Invalid vin: $vin" }
         if (type == Type.INTENT) {
             requireNotNull(txId) { "Missing input intent txid" }
