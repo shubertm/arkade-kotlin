@@ -20,6 +20,18 @@ class AssetRef(
     val assetId: AssetId?,
     val groupIndex: Int?,
 ) {
+    fun validate() {
+        when (type) {
+            Type.BY_ID -> {
+                require(assetId != null) { "Missing asset id for ${type.name} asset ref" }
+            }
+            Type.BY_GROUP -> {
+                require(groupIndex != null) { "Missing group index for ${type.name} asset ref" }
+            }
+            Type.UNSPECIFIED -> throw IllegalStateException("Cannot validate unspecified asset ref")
+        }
+    }
+
     fun serialize(): ByteArray {
         val output = ByteArrayOutput()
         serializeTo(output)
@@ -27,6 +39,7 @@ class AssetRef(
     }
 
     fun serializeTo(output: ByteArrayOutput) {
+        validate()
         output.write(type.ordinal)
         when (type) {
             Type.BY_ID -> {

@@ -27,13 +27,13 @@ class AssetOutput(
     }
 
     fun serialize(): ByteArray {
-        validate()
         val output = ByteArrayOutput()
         serializeTo(output)
         return output.toByteArray()
     }
 
     fun serializeTo(output: ByteArrayOutput) {
+        validate()
         output.write(Type.LOCAL.ordinal)
         output.writeUInt16LE(vout)
         output.writeVarInt(amount)

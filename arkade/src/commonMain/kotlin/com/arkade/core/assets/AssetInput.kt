@@ -33,13 +33,13 @@ class AssetInput(
     }
 
     fun serialize(): ByteArray {
-        validate()
         val output = ByteArrayOutput()
         serializeTo(output)
         return output.toByteArray()
     }
 
     fun serializeTo(output: ByteArrayOutput) {
+        validate()
         output.write(type.ordinal)
         if (type == Type.INTENT && txId != null) {
             output.writeBytes(txId)

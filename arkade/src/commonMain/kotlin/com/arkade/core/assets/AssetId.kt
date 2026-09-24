@@ -21,6 +21,11 @@ class AssetId(
     /** The lowercase hex encoding of [serialize]. */
     override fun toString(): String = serialize().toHexString().lowercase()
 
+    fun validate() {
+        require(txId.isNotEmpty()) { "Missing transaction id" }
+        require(groupIndex >= 0) { "Group index cannot be negative" }
+    }
+
     /** Serializes this asset id to its fixed-size binary representation. */
     fun serialize(): ByteArray {
         val output = ByteArrayOutput()
@@ -30,6 +35,7 @@ class AssetId(
 
     /** Writes this asset id's binary representation to [output]. */
     fun serializeTo(output: ByteArrayOutput) {
+        validate()
         output.write(txId)
         output.writeUInt16LE(groupIndex)
     }

@@ -70,13 +70,13 @@ class AssetGroup(
     }
 
     fun serialize(): ByteArray {
-        validate()
         val output = ByteArrayOutput()
         serializeTo(output)
         return output.toByteArray()
     }
 
     fun serializeTo(output: ByteArrayOutput) {
+        validate()
         var presence = 0
         if (assetId != null) {
             presence = presence or MASK_ASSET_ID

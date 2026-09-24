@@ -25,13 +25,13 @@ class AssetMetadata(
     }
 
     fun serialize(): ByteArray {
-        validate()
         val output = ByteArrayOutput()
         serializeTo(output)
         return output.toByteArray()
     }
 
     fun serializeTo(output: ByteArrayOutput) {
+        validate()
         output.writeVarBytes(key)
         output.writeVarBytes(value)
     }
