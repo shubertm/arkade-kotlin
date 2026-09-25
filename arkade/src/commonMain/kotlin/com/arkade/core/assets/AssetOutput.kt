@@ -1,6 +1,7 @@
 package com.arkade.core.assets
 
 import fr.acinq.bitcoin.io.ByteArrayInput
+import fr.acinq.bitcoin.io.ByteArrayOutput
 
 /**
  * An output of the containing transaction that receives an asset amount from an [AssetGroup].
@@ -23,6 +24,19 @@ class AssetOutput(
     fun validate() {
         require(vout >= 0) { "invalid vout: $vout" }
         require(amount > 0) { "asset output amount must be greater than 0" }
+    }
+
+    fun serialize(): ByteArray {
+        val output = ByteArrayOutput()
+        serializeTo(output)
+        return output.toByteArray()
+    }
+
+    fun serializeTo(output: ByteArrayOutput) {
+        validate()
+        output.write(Type.LOCAL.ordinal)
+        output.writeUInt16LE(vout)
+        output.writeVarInt(amount)
     }
 
     /** The kind of output being described; currently only [LOCAL] is supported. */

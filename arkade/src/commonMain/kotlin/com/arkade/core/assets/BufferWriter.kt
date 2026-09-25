@@ -13,3 +13,25 @@ fun ByteArrayOutput.writeUInt16LE(value: Int) {
     write(value.toByte().toInt())
     write((value shr 8).toByte().toInt())
 }
+
+fun ByteArrayOutput.writeVarInt(value: Long) {
+    require(value >= 0) { "VarInt must be non-negative" }
+    var remaining = value
+    do {
+        var byte = (remaining and 0x7F).toByte()
+        remaining = remaining ushr 7
+        if (remaining > 0L) {
+            byte = (byte.toInt() or 0x80).toByte()
+        }
+        write(byte.toInt())
+    } while (remaining > 0L)
+}
+
+fun ByteArrayOutput.writeBytes(bytes: ByteArray) {
+    write(bytes)
+}
+
+fun ByteArrayOutput.writeVarBytes(bytes: ByteArray) {
+    writeVarInt(bytes.size.toLong())
+    writeBytes(bytes)
+}

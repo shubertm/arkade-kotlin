@@ -1,6 +1,7 @@
 package com.arkade.core.assets
 
 import fr.acinq.bitcoin.io.ByteArrayInput
+import fr.acinq.bitcoin.io.ByteArrayOutput
 import fr.acinq.bitcoin.io.readNBytes
 
 /**
@@ -22,6 +23,32 @@ class AssetInput(
     val amount: Long,
     val txId: ByteArray? = null,
 ) {
+    private fun validate() {
+        require(type != Type.UNSPECIFIED) { "Asset input type not specified" }
+        require(vin in 0..0xFFFF) { "Invalid vin: $vin" }
+        if (type == Type.INTENT) {
+            requireNotNull(txId) { "Missing input intent txid" }
+            require(txId.size == TX_HASH_SIZE) { "Invalid intent txid length" }
+            require(!txId.all { it == 0.toByte() }) { "Missing input intent txid" }
+        }
+    }
+
+    fun serialize(): ByteArray {
+        val output = ByteArrayOutput()
+        serializeTo(output)
+        return output.toByteArray()
+    }
+
+    fun serializeTo(output: ByteArrayOutput) {
+        validate()
+        output.write(type.ordinal)
+        if (type == Type.INTENT && txId != null) {
+            output.writeBytes(txId)
+        }
+        output.writeUInt16LE(vin)
+        output.writeVarInt(amount)
+    }
+
     /** The kind of input being referenced. */
     enum class Type {
         /** No reference; not a valid value for a parsed [AssetInput]. */
@@ -38,15 +65,15 @@ class AssetInput(
             /**
              * Maps the single-byte wire encoding to a [Type].
              *
-             * @param value The encoded type byte: `0` for [LOCAL], `1` for [INTENT], `2` for
-             * [UNSPECIFIED].
+             * @param value The encoded type byte: `0` for [UNSPECIFIED], `1` for [LOCAL], `2` for
+             * [INTENT].
              * @throws IllegalArgumentException if [value] is not one of the above.
              */
             fun fromByte(value: Byte): Type =
                 when (value) {
-                    0.toByte() -> LOCAL
-                    1.toByte() -> INTENT
-                    2.toByte() -> UNSPECIFIED
+                    0.toByte() -> UNSPECIFIED
+                    1.toByte() -> LOCAL
+                    2.toByte() -> INTENT
                     else -> throw IllegalArgumentException("Invalid asset input type: $value")
                 }
         }
@@ -77,5 +104,16 @@ class AssetInput(
                 }
                 Type.UNSPECIFIED -> throw IllegalArgumentException("Asset input type unspecified")
             }
+
+        fun createIntent(
+            intentTxId: ByteArray,
+            index: Int,
+            amount: Long,
+        ): AssetInput {
+            require(intentTxId.size == TX_HASH_SIZE) { "Invalid input intent txid length" }
+            val input = AssetInput(Type.INTENT, index, amount, intentTxId)
+            input.validate()
+            return input
+        }
     }
 }
