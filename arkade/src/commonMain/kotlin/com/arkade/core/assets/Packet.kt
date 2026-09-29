@@ -3,7 +3,7 @@ package com.arkade.core.assets
 import fr.acinq.bitcoin.io.ByteArrayInput
 
 /**
- * The Arkade asset [ExtensionPacket]: a list of [AssetGroup]s describing the asset issuances and
+ * The Arkade asset [ExtensionPacket]: a list of [AssetGroup]s describing the asset issuance and
  * transfers carried by a transaction.
  *
  * @property groups The asset groups carried by this packet; must be non-empty.
@@ -88,7 +88,7 @@ class Packet(
             val count = input.readVarIntToInt()
 
             val groups: MutableList<AssetGroup> = mutableListOf()
-            for (i in 0 until count) {
+            (0 until count).forEach { _ ->
                 require(input.availableBytes > 0) { "Missing group bytes" }
                 groups.add(AssetGroup.fromBytesInput(input))
             }

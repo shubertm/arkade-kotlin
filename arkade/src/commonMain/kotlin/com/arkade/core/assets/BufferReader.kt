@@ -9,7 +9,7 @@ import fr.acinq.bitcoin.io.readNBytes
  * Each byte contributes its low 7 bits to the result, most-significant-group-first is not used;
  * instead groups are read least-significant-first with the high bit of each byte signaling
  * whether another byte follows. As a special case, once 63 bits have been accumulated, exactly
- * one more byte is read and it must equal `0x01`, enforcing a canonical encoding for the top bit
+ * one more byte is read, and it must equal `0x01`, enforcing a canonical encoding for the top bit
  * of a 64-bit value.
  *
  * @return The decoded unsigned 64-bit integer.

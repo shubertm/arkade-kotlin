@@ -6,11 +6,11 @@ import fr.acinq.bitcoin.io.ByteArrayOutput
 /**
  * An output of the containing transaction that receives an asset amount from an [AssetGroup].
  *
- * @property vout The index of the transaction output receiving the asset amount.
+ * @property vOut The index of the transaction output receiving the asset amount.
  * @property amount The asset amount assigned to that output.
  */
 class AssetOutput(
-    val vout: Int,
+    val vOut: Int,
     val amount: Long,
 ) {
     private val type = Type.LOCAL
@@ -18,11 +18,11 @@ class AssetOutput(
     /**
      * Validates this output's fields.
      *
-     * @throws IllegalArgumentException if [vout] is negative or [amount] is not strictly
+     * @throws IllegalArgumentException if [vOut] is negative or [amount] is not strictly
      * positive.
      */
     fun validate() {
-        require(vout >= 0) { "invalid vout: $vout" }
+        require(vOut >= 0) { "invalid vOut: $vOut" }
         require(amount > 0) { "asset output amount must be greater than 0" }
     }
 
@@ -35,7 +35,7 @@ class AssetOutput(
     fun serializeTo(output: ByteArrayOutput) {
         validate()
         output.write(Type.LOCAL.ordinal)
-        output.writeUInt16LE(vout)
+        output.writeUInt16LE(vOut)
         output.writeVarInt(amount)
     }
 
@@ -54,7 +54,7 @@ class AssetOutput(
     companion object {
         /**
          * Parses an [AssetOutput] from [input]'s binary representation: a type byte, which must
-         * encode [Type.LOCAL], followed by a little-endian uint16 [vout] and a var-int [amount].
+         * encode [Type.LOCAL], followed by a little-endian uint16 [vOut] and a var-int [amount].
          *
          * @param input The buffer to read from.
          * @return The parsed and [validate]d [AssetOutput].
@@ -66,9 +66,9 @@ class AssetOutput(
             require(type != Type.UNSPECIFIED.toByte()) { "output type unspecified" }
             require(type == Type.LOCAL.toByte()) { "invalid asset output type: $type" }
 
-            val vout = input.readUInt16LE()
+            val vOut = input.readUInt16LE()
             val amount = input.readVarIntToLong()
-            val output = AssetOutput(vout, amount)
+            val output = AssetOutput(vOut, amount)
             output.validate()
             return output
         }

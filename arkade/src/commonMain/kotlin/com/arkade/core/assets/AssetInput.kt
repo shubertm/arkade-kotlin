@@ -7,8 +7,8 @@ import fr.acinq.bitcoin.io.readNBytes
 /**
  * An input spending an existing asset amount into an [AssetGroup].
  *
- * [LOCAL] inputs reference an input of the same transaction as the containing [AssetGroup] by
- * its [vin] index. [INTENT] inputs additionally carry the [txId] of an unrelated intent
+ * [Type.LOCAL] inputs reference an input of the same transaction as the containing [AssetGroup] by
+ * its [vin] index. [Type.INTENT] inputs additionally carry the [txId] of an unrelated intent
  * transaction whose output is being consumed.
  *
  * @property type Whether this input references a local transaction input or an external intent.
@@ -27,9 +27,9 @@ class AssetInput(
         require(type != Type.UNSPECIFIED) { "Asset input type not specified" }
         require(vin in 0..0xFFFF) { "Invalid vin: $vin" }
         if (type == Type.INTENT) {
-            requireNotNull(txId) { "Missing input intent txid" }
-            require(txId.size == TX_HASH_SIZE) { "Invalid intent txid length" }
-            require(!txId.all { it == 0.toByte() }) { "Missing input intent txid" }
+            requireNotNull(txId) { "Missing input intent txId" }
+            require(txId.size == TX_HASH_SIZE) { "Invalid intent txId length" }
+            require(!txId.all { it == 0.toByte() }) { "Missing input intent txId" }
         }
     }
 
@@ -90,7 +90,7 @@ class AssetInput(
          * @throws IllegalArgumentException if the type byte is invalid or is [Type.UNSPECIFIED].
          */
         fun fromBytesInput(input: ByteArrayInput): AssetInput =
-            when (val type = Type.fromByte(input.read().toByte())) {
+            when (Type.fromByte(input.read().toByte())) {
                 Type.LOCAL -> {
                     val vin = input.readUInt16LE()
                     val amount = input.readVarIntToLong()
@@ -110,7 +110,7 @@ class AssetInput(
             index: Int,
             amount: Long,
         ): AssetInput {
-            require(intentTxId.size == TX_HASH_SIZE) { "Invalid input intent txid length" }
+            require(intentTxId.size == TX_HASH_SIZE) { "Invalid input intent txId length" }
             val input = AssetInput(Type.INTENT, index, amount, intentTxId)
             input.validate()
             return input

@@ -450,7 +450,7 @@ class BatchSession(
             intentAssetGroup.outputs.forEachIndexed { index, intentAssetOutput ->
                 val leafAssetOutput = leafAssetGroup.outputs[index]
                 if (
-                    intentAssetOutput.vout != leafAssetOutput.vout ||
+                    intentAssetOutput.vOut != leafAssetOutput.vOut ||
                     intentAssetOutput.amount != leafAssetOutput.amount
                 ) {
                     return false

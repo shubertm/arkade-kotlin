@@ -36,7 +36,7 @@ service IndexerService {
   // include pagination information if the results span multiple pages.
   rpc GetVtxoTree(GetVtxoTreeRequest) returns (GetVtxoTreeResponse) {
     option (meshapi.gateway.http) = {
-      get: "/v1/indexer/batch/{batch_outpoint.txid}/{batch_outpoint.vout}/tree"
+      get: "/v1/indexer/batch/{batch_outpoint.txid}/{batch_outpoint.vOut}/tree"
     };
   };
 
@@ -45,7 +45,7 @@ service IndexerService {
   // The response may be paginated if the results span multiple pages.
   rpc GetVtxoTreeLeaves(GetVtxoTreeLeavesRequest) returns (GetVtxoTreeLeavesResponse) {
     option (meshapi.gateway.http) = {
-      get: "/v1/indexer/batch/{batch_outpoint.txid}/{batch_outpoint.vout}/tree/leaves"
+      get: "/v1/indexer/batch/{batch_outpoint.txid}/{batch_outpoint.vOut}/tree/leaves"
     };
   };
 
@@ -63,7 +63,7 @@ service IndexerService {
   // The response may be paginated if the results span multiple pages.
   rpc GetVtxoChain(GetVtxoChainRequest) returns (GetVtxoChainResponse) {
     option (meshapi.gateway.http) = {
-      get: "/v1/indexer/vtxo/{outpoint.txid}/{outpoint.vout}/chain"
+      get: "/v1/indexer/vtxo/{outpoint.txid}/{outpoint.vOut}/chain"
     };
   }
 
@@ -94,7 +94,7 @@ service IndexerService {
   // empty.
   rpc GetBatchSweepTransactions(GetBatchSweepTransactionsRequest) returns (GetBatchSweepTransactionsResponse) {
     option (meshapi.gateway.http) = {
-      get: "/v1/indexer/batch/{batch_outpoint.txid}/{batch_outpoint.vout}/sweepTxs"
+      get: "/v1/indexer/batch/{batch_outpoint.txid}/{batch_outpoint.vOut}/sweepTxs"
     };
   }
 
