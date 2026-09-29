@@ -24,6 +24,7 @@ class AssetId(
     fun validate() {
         require(txId.isNotEmpty()) { "Missing transaction id" }
         require(txId.size == TX_HASH_SIZE) { "Invalid txid length" }
+        require(txId.all { it != 0.toByte() }) { "Empty txId" }
         require(groupIndex in 0..0xFFFF) { "Group index cannot be negative" }
     }
 
@@ -42,6 +43,30 @@ class AssetId(
     }
 
     companion object {
+        fun create(
+            txId: ByteArray,
+            groupIndex: Int,
+        ): AssetId {
+            require(txId.isNotEmpty()) { "Missing txId" }
+            require(txId.size == TX_HASH_SIZE) { "Invalid txId length" }
+            require(groupIndex in 0..0xFFFF) { "Group index should be within the acceptable range, 0 <= groupIndex <= 65535" }
+            val assetId = AssetId(txId, groupIndex)
+            assetId.validate()
+            return assetId
+        }
+
+        fun create(
+            txIdHex: String,
+            groupIndex: Int,
+        ): AssetId {
+            require(txIdHex.isNotEmpty()) { "Missing txId" }
+            val txId = txIdHex.hexToByteArray()
+            require(txId.size == TX_HASH_SIZE) {
+                "Invalid txId length: got ${txId.size} bytes, expected $TX_HASH_SIZE bytes"
+            }
+            return create(txId, groupIndex)
+        }
+
         /**
          * Parses an [AssetId] from [input]'s fixed-size binary representation.
          *
@@ -55,7 +80,20 @@ class AssetId(
             val txId = input.readNBytes(TX_HASH_SIZE)
             val index = input.readUInt16LE()
             requireNotNull(txId) { "Missing txId" }
-            return AssetId(txId, index)
+            val assetId = AssetId(txId, index)
+            assetId.validate()
+            return assetId
+        }
+
+        fun fromBytes(bytes: ByteArray): AssetId {
+            require(bytes.isNotEmpty()) { "Missing asset id" }
+            require(bytes.size >= ASSET_ID_SIZE) { "Invalid asset id length: got ${bytes.size} bytes, expected $ASSET_ID_SIZE bytes" }
+            return fromBytesInput(ByteArrayInput(bytes))
+        }
+
+        fun fromString(hex: String): AssetId {
+            val bytes = hex.hexToByteArray()
+            return fromBytes(bytes)
         }
     }
 }
