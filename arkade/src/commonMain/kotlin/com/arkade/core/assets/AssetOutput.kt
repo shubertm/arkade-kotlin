@@ -15,15 +15,8 @@ class AssetOutput(
 ) {
     private val type = Type.LOCAL
 
-    /**
-     * Validates this output's fields.
-     *
-     * @throws IllegalArgumentException if [vOut] is negative or [amount] is not strictly
-     * positive.
-     */
-    fun validate() {
-        require(vOut >= 0) { "invalid vOut: $vOut" }
-        require(amount > 0) { "asset output amount must be greater than 0" }
+    init {
+        validate()
     }
 
     fun serialize(): ByteArray {
@@ -45,6 +38,19 @@ class AssetOutput(
         output.writeVarInt(amount)
     }
 
+    override fun toString(): String = serialize().toHexString()
+
+    /**
+     * Validates this output's fields.
+     *
+     * @throws IllegalArgumentException if [vOut] is negative or [amount] is not strictly
+     * positive.
+     */
+    private fun validate() {
+        require(vOut >= 0) { "Invalid vOut: $vOut" }
+        require(amount > 0) { "Asset output amount must be greater than 0" }
+    }
+
     /** The kind of output being described; currently only [LOCAL] is supported. */
     private enum class Type {
         /** No reference; not a valid value for a parsed [AssetOutput]. */
@@ -58,6 +64,11 @@ class AssetOutput(
     }
 
     companion object {
+        fun create(
+            vOut: Int,
+            amount: Long,
+        ): AssetOutput = AssetOutput(vOut, amount)
+
         /**
          * Parses an [AssetOutput] from [input]'s binary representation: a type byte, which must
          * encode [Type.LOCAL], followed by a little-endian uint16 [vOut] and a var-int [amount].
@@ -76,7 +87,6 @@ class AssetOutput(
             val vOut = input.readUInt16LE()
             val amount = input.readVarIntToLong()
             val output = AssetOutput(vOut, amount)
-            output.validate()
             return output
         }
     }
