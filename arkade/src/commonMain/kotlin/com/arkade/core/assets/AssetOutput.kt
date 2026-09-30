@@ -32,6 +32,12 @@ class AssetOutput(
         return output.toByteArray()
     }
 
+    /**
+     * Appends this output's type byte, little-endian uint16 [vOut], and var-int [amount] to [output].
+     *
+     * @throws IllegalArgumentException if [vOut] is outside `0..0xFFFF` or [amount] is not
+     * strictly positive. A [vOut] above `0xFFFF` leaves the type byte appended before failing.
+     */
     fun serializeTo(output: ByteArrayOutput) {
         validate()
         output.write(Type.LOCAL.ordinal)
@@ -59,7 +65,8 @@ class AssetOutput(
          * @param input The buffer to read from.
          * @return The parsed and [validate]d [AssetOutput].
          * @throws IllegalArgumentException if the type byte is [Type.UNSPECIFIED] or any other
-         * value than [Type.LOCAL], or if the parsed fields fail [validate].
+         * value than [Type.LOCAL], if [vOut] or [amount] is truncated, if [amount] is malformed
+         * or exceeds [Long.MAX_VALUE], or if the parsed fields fail [validate].
          */
         fun fromBytesInput(input: ByteArrayInput): AssetOutput {
             val type = input.read().toByte()

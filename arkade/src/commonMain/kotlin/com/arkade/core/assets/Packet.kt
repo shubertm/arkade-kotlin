@@ -78,7 +78,8 @@ class Packet(
          * Parses a [Packet] from [input]: a var-int group count followed by that many
          * [AssetGroup]s, with no trailing bytes permitted afterward.
          *
-         * @throws IllegalArgumentException if [input] is empty, a group is malformed or missing,
+         * @throws IllegalArgumentException if [input] is empty, the group count is truncated,
+         * malformed, or exceeds [Int.MAX_VALUE], a group is malformed or missing,
          * or bytes remain in [input] after reading the declared number of groups; or if the
          * parsed packet fails [validate].
          */
