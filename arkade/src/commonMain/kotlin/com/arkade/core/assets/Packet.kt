@@ -3,7 +3,7 @@ package com.arkade.core.assets
 import fr.acinq.bitcoin.io.ByteArrayInput
 
 /**
- * The Arkade asset [ExtensionPacket]: a list of [AssetGroup]s describing the asset issuances and
+ * The Arkade asset [ExtensionPacket]: a list of [AssetGroup]s describing the asset issuance and
  * transfers carried by a transaction.
  *
  * @property groups The asset groups carried by this packet; must be non-empty.
@@ -78,7 +78,8 @@ class Packet(
          * Parses a [Packet] from [input]: a var-int group count followed by that many
          * [AssetGroup]s, with no trailing bytes permitted afterward.
          *
-         * @throws IllegalArgumentException if [input] is empty, a group is malformed or missing,
+         * @throws IllegalArgumentException if [input] is empty, the group count is truncated,
+         * malformed, or exceeds [Int.MAX_VALUE], a group is malformed or missing,
          * or bytes remain in [input] after reading the declared number of groups; or if the
          * parsed packet fails [validate].
          */
@@ -88,7 +89,7 @@ class Packet(
             val count = input.readVarIntToInt()
 
             val groups: MutableList<AssetGroup> = mutableListOf()
-            for (i in 0 until count) {
+            (0 until count).forEach { _ ->
                 require(input.availableBytes > 0) { "Missing group bytes" }
                 groups.add(AssetGroup.fromBytesInput(input))
             }

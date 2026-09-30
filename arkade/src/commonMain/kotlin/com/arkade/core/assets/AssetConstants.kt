@@ -4,7 +4,7 @@ package com.arkade.core.assets
 const val TX_HASH_SIZE: Int = 32
 
 /** The fixed serialized size, in bytes, of an [AssetId] ([TX_HASH_SIZE] + 2 for the group index). */
-const val ASSET_ID_SIZE: Int = 34; // 32 + 2
+const val ASSET_ID_SIZE: Int = 34 // 32 + 2
 
 /** The current version of the asset extension binary format. */
 const val ASSET_VERSION = 0x01
