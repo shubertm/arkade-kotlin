@@ -13,8 +13,6 @@ class AssetOutput(
     val vOut: Int,
     val amount: Long,
 ) {
-    private val type = Type.LOCAL
-
     init {
         validate()
     }
