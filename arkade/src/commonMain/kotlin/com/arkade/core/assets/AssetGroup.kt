@@ -37,7 +37,7 @@ class AssetGroup(
      * @throws IllegalArgumentException if both [inputs] and [outputs] are empty; if this is an
      * issuance group ([isIssuance]) with non-empty [inputs]; if this is a transfer group
      * (non-issuance) with a non-null [controlAsset]; if [inputs] contains more than one distinct
-     * [AssetInput.type]; or if [inputs]/[outputs] contain duplicate [AssetInput.vin]/
+     * [AssetInput.type]; or if [inputs]/[outputs] contain duplicate [AssetInput.vIn]/
      * [AssetOutput.vOut] values, respectively.
      */
     fun validate() {
@@ -55,8 +55,8 @@ class AssetGroup(
 
             val seenVIns: HashSet<Int> = hashSetOf()
             inputs.forEach { input ->
-                val isNotSeen = seenVIns.add(input.vin)
-                require(isNotSeen) { "Duplicate asset input vin: ${input.vin}" }
+                val isNotSeen = seenVIns.add(input.vIn)
+                require(isNotSeen) { "Duplicate asset input vIn: ${input.vIn}" }
             }
         }
 
