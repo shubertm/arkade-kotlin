@@ -207,7 +207,7 @@ class AssetGroup(
          * Parses a var-int-prefixed list of [AssetMetadata] entries from [input].
          *
          * @throws IllegalArgumentException if the count is truncated, malformed, or exceeds
-         * [Int.MAX_VALUE], or if an entry fails to parse or validate.
+         * [Int.MAX_VALUE], or if an entry fails to parse or [validate].
          */
         private fun deserializeMetadataList(input: ByteArrayInput): List<AssetMetadata> {
             val count = input.readVarIntToInt()
