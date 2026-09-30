@@ -36,12 +36,13 @@ class AssetOutput(
         output.writeVarInt(amount)
     }
 
+    /** Returns this output's serialized bytes as lowercase hex. */
     override fun toString(): String = serialize().toHexString()
 
     /**
      * Validates this output's fields.
      *
-     * @throws IllegalArgumentException if [vOut] is negative or [amount] is not strictly
+     * @throws IllegalArgumentException if [vOut] is outside `0..0xFFFF` or [amount] is not strictly
      * positive.
      */
     private fun validate() {
@@ -62,6 +63,13 @@ class AssetOutput(
     }
 
     companion object {
+        /**
+         * Creates an output assigning an asset amount to the containing transaction's output at [vOut].
+         *
+         * @param vOut The output index, in `0..0xFFFF`.
+         * @param amount The asset amount to assign; must be strictly positive.
+         * @throws IllegalArgumentException if [vOut] or [amount] violates these constraints.
+         */
         fun create(
             vOut: Int,
             amount: Long,
