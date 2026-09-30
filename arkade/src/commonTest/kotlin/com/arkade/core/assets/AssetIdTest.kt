@@ -55,7 +55,7 @@ class AssetIdTest {
             )
         testCases.forEach { case ->
             val assetId = AssetId.fromString(case.a)
-            assertEquals(case.b, assetId.txId.toHexString())
+            assertEquals(case.b, assetId.txIdHex())
             assertEquals(case.c, assetId.groupIndex)
         }
     }

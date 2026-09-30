@@ -15,9 +15,19 @@ import fr.acinq.bitcoin.io.readNBytes
  * @property groupIndex The index of the issuing [AssetGroup] within that packet's groups.
  */
 class AssetId(
-    val txId: ByteArray,
+    txId: ByteArray,
     val groupIndex: Int,
 ) {
+    private val txId = txId.copyOf()
+
+    init {
+        validate()
+    }
+
+    fun txId(): ByteArray = txId.copyOf()
+
+    fun txIdHex(): String = txId().toHexString()
+
     /** The lowercase hex encoding of [serialize]. */
     override fun toString(): String = serialize().toHexString().lowercase()
 
@@ -51,7 +61,6 @@ class AssetId(
             require(txId.size == TX_HASH_SIZE) { "Invalid txId length" }
             require(groupIndex in 0..0xFFFF) { "Group index should be within the acceptable range, 0 <= groupIndex <= 65535" }
             val assetId = AssetId(txId, groupIndex)
-            assetId.validate()
             return assetId
         }
 
