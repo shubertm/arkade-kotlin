@@ -162,8 +162,8 @@ class AssetGroup(
          *
          * @param input The buffer to read from.
          * @return The parsed and [validate]d [AssetGroup].
-         * @throws IllegalArgumentException if any nested field fails to parse, or if the parsed
-         * group fails [validate].
+         * @throws IllegalArgumentException if a count is truncated, malformed, or exceeds
+         * [Int.MAX_VALUE], if a nested parser rejects a field, or if the parsed group fails [validate].
          */
         fun fromBytesInput(input: ByteArrayInput): AssetGroup {
             val presence = input.read()
@@ -203,7 +203,12 @@ class AssetGroup(
             return group
         }
 
-        /** Parses a var-int-prefixed list of [AssetMetadata] entries from [input]. */
+        /**
+         * Parses a var-int-prefixed list of [AssetMetadata] entries from [input].
+         *
+         * @throws IllegalArgumentException if the count is truncated, malformed, or exceeds
+         * [Int.MAX_VALUE], or if an entry fails to parse or [validate].
+         */
         private fun deserializeMetadataList(input: ByteArrayInput): List<AssetMetadata> {
             val count = input.readVarIntToInt()
             val metadata: MutableList<AssetMetadata> = mutableListOf()

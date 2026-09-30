@@ -434,6 +434,11 @@ class BatchSession(
         throw UnsupportedOperationException("Intent asset packet not found in VTXO tree leaves")
     }
 
+    /**
+     * Returns whether both packets have the same asset ids and output indices and amounts,
+     * with groups and outputs compared in order. Two empty packets match, as do two null asset ids.
+     * Inputs, control assets, and metadata are ignored.
+     */
     private fun assetPacketOutputMatch(
         intentPacket: Packet,
         leafPacket: Packet,

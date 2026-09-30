@@ -23,6 +23,12 @@ class AssetInput(
     val amount: Long,
     val txId: ByteArray? = null,
 ) {
+    /**
+     * Validates the input reference; [amount] is not checked.
+     *
+     * @throws IllegalArgumentException if [type] is [Type.UNSPECIFIED], [vin] is outside
+     * `0..0xFFFF`, or an intent input's [txId] is missing, is not 32 bytes, or is all zeros.
+     */
     private fun validate() {
         require(type != Type.UNSPECIFIED) { "Asset input type not specified" }
         require(vin in 0..0xFFFF) { "Invalid vin: $vin" }
@@ -85,9 +91,14 @@ class AssetInput(
          * for [Type.LOCAL], a little-endian uint16 [vin] and a var-int [amount]; or for
          * [Type.INTENT], a 32-byte [txId] followed by [vin] and [amount] in the same encoding.
          *
+         * Does not validate the parsed input reference. If fewer than 32 bytes remain when
+         * reading an intent's [txId], it is left `null` and [vin] and [amount] are read from
+         * the remaining bytes.
+         *
          * @param input The buffer to read from.
          * @return The parsed [AssetInput].
-         * @throws IllegalArgumentException if the type byte is invalid or is [Type.UNSPECIFIED].
+         * @throws IllegalArgumentException if the type byte is invalid or is [Type.UNSPECIFIED],
+         * [vin] is truncated, or [amount] is truncated, malformed, or exceeds [Long.MAX_VALUE].
          */
         fun fromBytesInput(input: ByteArrayInput): AssetInput =
             when (Type.fromByte(input.read().toByte())) {
@@ -105,6 +116,14 @@ class AssetInput(
                 Type.UNSPECIFIED -> throw IllegalArgumentException("Asset input type unspecified")
             }
 
+        /**
+         * Creates an intent input after validating its transaction id and input index.
+         *
+         * @param intentTxId The referenced intent transaction's 32-byte id; must not be all zeros.
+         * @param index The input index in that transaction, in `0..0xFFFF`.
+         * @param amount The asset amount to consume; stored without validation, including zero.
+         * @throws IllegalArgumentException if [intentTxId] or [index] violates these constraints.
+         */
         fun createIntent(
             intentTxId: ByteArray,
             index: Int,
