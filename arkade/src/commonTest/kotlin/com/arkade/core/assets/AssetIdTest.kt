@@ -98,8 +98,4 @@ class AssetIdTest {
         val assetId = AssetId.create("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", 0)
         assertEquals(34, assetId.serialize().size)
     }
-
-    companion object {
-        const val LOG_TAG = "AssetIdTest"
-    }
 }

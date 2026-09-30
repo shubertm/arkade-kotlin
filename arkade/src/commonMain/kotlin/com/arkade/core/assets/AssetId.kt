@@ -24,7 +24,7 @@ class AssetId(
     fun validate() {
         require(txId.isNotEmpty()) { "Missing transaction id" }
         require(txId.size == TX_HASH_SIZE) { "Invalid txid length" }
-        require(txId.all { it != 0.toByte() }) { "Empty txId" }
+        require(!txId.all { it == 0.toByte() }) { "Empty txId" }
         require(groupIndex in 0..0xFFFF) { "Group index cannot be negative" }
     }
 
@@ -80,8 +80,7 @@ class AssetId(
             val txId = input.readNBytes(TX_HASH_SIZE)
             val index = input.readUInt16LE()
             requireNotNull(txId) { "Missing txId" }
-            val assetId = AssetId(txId, index)
-            assetId.validate()
+            val assetId = create(txId, index)
             return assetId
         }
 
