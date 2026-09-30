@@ -29,9 +29,9 @@ class AssetInput(
         validate()
     }
 
-    fun txId() = txId?.copyOf()!!
+    fun txId() = txId?.copyOf()
 
-    fun txIdHex() = txId().toHexString()
+    fun txIdHex() = txId()?.toHexString()
 
     fun serialize(): ByteArray {
         val output = ByteArrayOutput()
