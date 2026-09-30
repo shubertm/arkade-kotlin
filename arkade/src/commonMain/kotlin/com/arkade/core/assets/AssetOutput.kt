@@ -79,8 +79,8 @@ class AssetOutput(
          */
         fun fromBytesInput(input: ByteArrayInput): AssetOutput {
             val type = input.read().toByte()
-            require(type != Type.UNSPECIFIED.toByte()) { "output type unspecified" }
-            require(type == Type.LOCAL.toByte()) { "invalid asset output type: $type" }
+            require(type != Type.UNSPECIFIED.toByte()) { "Asset output type unspecified" }
+            require(type == Type.LOCAL.toByte()) { "Invalid asset output type: $type" }
 
             val vOut = input.readUInt16LE()
             val amount = input.readVarIntToLong()

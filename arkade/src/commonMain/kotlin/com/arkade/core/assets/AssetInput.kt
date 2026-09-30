@@ -54,16 +54,16 @@ class AssetInput(
     /**
      * Validates the input reference; [amount] is not checked.
      *
-     * @throws IllegalArgumentException if [type] is [Type.UNSPECIFIED], [vin] is outside
+     * @throws IllegalArgumentException if [type] is [Type.UNSPECIFIED], [vIn] is outside
      * `0..0xFFFF`, or an intent input's [txId] is missing, is not 32 bytes, or is all zeros.
      */
     private fun validate() {
         require(type != Type.UNSPECIFIED) { "Asset input type not specified" }
         require(vIn in 0..0xFFFF) { "Invalid vIn: $vIn" }
         if (type == Type.INTENT) {
-            requireNotNull(txId) { "Missing input intent txid" }
-            require(txId.size == TX_HASH_SIZE) { "Invalid intent txid length" }
-            require(!txId.all { it == 0.toByte() }) { "Missing input intent txid" }
+            requireNotNull(txId) { "Missing input intent txId" }
+            require(txId.size == TX_HASH_SIZE) { "Invalid intent txId length" }
+            require(!txId.all { it == 0.toByte() }) { "Missing input intent txId" }
         }
     }
 
@@ -87,11 +87,11 @@ class AssetInput(
              * [INTENT].
              * @throws IllegalArgumentException if [value] is not one of the above.
              */
-            fun fromByte(value: Byte): Type =
+            fun fromByte(value: Int): Type =
                 when (value) {
-                    0.toByte() -> UNSPECIFIED
-                    1.toByte() -> LOCAL
-                    2.toByte() -> INTENT
+                    0 -> UNSPECIFIED
+                    1 -> LOCAL
+                    2 -> INTENT
                     else -> throw IllegalArgumentException("Invalid asset input type: $value")
                 }
         }
@@ -104,27 +104,29 @@ class AssetInput(
          * [Type.INTENT], a 32-byte [txId] followed by [vIn] and [amount] in the same encoding.
          *
          * Does not validate the parsed input reference. If fewer than 32 bytes remain when
-         * reading an intent's [txId], it is left `null` and [vin] and [amount] are read from
+         * reading an intent's [txId], it is left `null` and [vIn] and [amount] are read from
          * the remaining bytes.
          *
          * @param input The buffer to read from.
          * @return The parsed [AssetInput].
          * @throws IllegalArgumentException if the type byte is invalid or is [Type.UNSPECIFIED],
-         * [vin] is truncated, or [amount] is truncated, malformed, or exceeds [Long.MAX_VALUE].
+         * [vIn] is truncated, or [amount] is truncated, malformed, or exceeds [Long.MAX_VALUE].
          */
         fun fromBytesInput(input: ByteArrayInput): AssetInput =
-            when (Type.fromByte(input.read().toByte())) {
+            when (Type.fromByte(input.read())) {
                 Type.LOCAL -> {
                     val vin = input.readUInt16LE()
                     val amount = input.readVarIntToLong()
                     AssetInput(Type.LOCAL, vin, amount)
                 }
+
                 Type.INTENT -> {
                     val txId = input.readNBytes(TX_HASH_SIZE)
                     val vin = input.readUInt16LE()
                     val amount = input.readVarIntToLong()
                     AssetInput(Type.INTENT, vin, amount, txId)
                 }
+
                 Type.UNSPECIFIED -> throw IllegalArgumentException("Asset input type unspecified")
             }
 
