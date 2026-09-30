@@ -9,14 +9,14 @@ import fr.acinq.bitcoin.io.ByteArrayOutput
  *
  * A group with a `null` [assetId] is an issuance group: it creates a new asset (identified by
  * this group's own index within the packet), must have no [inputs], and may optionally specify a
- * [controlAsset] used to authorize future issuances/transfers of the asset. A group with a
+ * [controlAsset] used to authorize future issuance/transfers of the asset. A group with a
  * non-null [assetId] transfers an existing asset and must not specify a [controlAsset].
  *
  * @property assetId The id of the asset being transferred, or `null` if this group issues a new
  * asset.
  * @property controlAsset A reference to the asset controlling this issuance; only valid when
  * [isIssuance] is `true`.
- * @property inputs The asset amounts consumed by this group; must be empty for issuances.
+ * @property inputs The asset amounts consumed by this group; must be empty for issuance.
  * @property outputs The asset amounts produced by this group.
  * @property metadata Optional auxiliary key/value data attached to this group.
  */
@@ -38,7 +38,7 @@ class AssetGroup(
      * issuance group ([isIssuance]) with non-empty [inputs]; if this is a transfer group
      * (non-issuance) with a non-null [controlAsset]; if [inputs] contains more than one distinct
      * [AssetInput.type]; or if [inputs]/[outputs] contain duplicate [AssetInput.vin]/
-     * [AssetOutput.vout] values, respectively.
+     * [AssetOutput.vOut] values, respectively.
      */
     fun validate() {
         require(inputs.isNotEmpty() || outputs.isNotEmpty()) { "Empty asset group" }
@@ -53,18 +53,18 @@ class AssetGroup(
             val allSameType = inputs.all { input -> input.type == firstType }
             require(allSameType) { "Asset inputs must be of the same type" }
 
-            val seenVins: HashSet<Int> = hashSetOf()
+            val seenVIns: HashSet<Int> = hashSetOf()
             inputs.forEach { input ->
-                val isNotSeen = seenVins.add(input.vin)
+                val isNotSeen = seenVIns.add(input.vin)
                 require(isNotSeen) { "Duplicate asset input vin: ${input.vin}" }
             }
         }
 
         if (outputs.size > 1) {
-            val seenVouts: HashSet<Int> = hashSetOf()
+            val seenVOuts: HashSet<Int> = hashSetOf()
             outputs.forEach { output ->
-                val isNotSeen = seenVouts.add(output.vout)
-                require(isNotSeen) { "Duplicate asset output vout: ${output.vout}" }
+                val isNotSeen = seenVOuts.add(output.vOut)
+                require(isNotSeen) { "Duplicate asset output vOut: ${output.vOut}" }
             }
         }
     }
@@ -162,8 +162,8 @@ class AssetGroup(
          *
          * @param input The buffer to read from.
          * @return The parsed and [validate]d [AssetGroup].
-         * @throws IllegalArgumentException if any nested field fails to parse, or if the parsed
-         * group fails [validate].
+         * @throws IllegalArgumentException if a count is truncated, malformed, or exceeds
+         * [Int.MAX_VALUE], if a nested parser rejects a field, or if the parsed group fails [validate].
          */
         fun fromBytesInput(input: ByteArrayInput): AssetGroup {
             val presence = input.read()
@@ -187,14 +187,14 @@ class AssetGroup(
             val inputCount = input.readVarIntToInt()
 
             val inputs: MutableList<AssetInput> = mutableListOf()
-            for (i in 0 until inputCount) {
+            (0 until inputCount).forEach { _ ->
                 inputs.add(AssetInput.fromBytesInput(input))
             }
 
             val outputCount = input.readVarIntToInt()
 
             val outputs: MutableList<AssetOutput> = mutableListOf()
-            for (i in 0 until outputCount) {
+            (0 until outputCount).forEach { _ ->
                 outputs.add(AssetOutput.fromBytesInput(input))
             }
 
@@ -203,11 +203,16 @@ class AssetGroup(
             return group
         }
 
-        /** Parses a var-int-prefixed list of [AssetMetadata] entries from [input]. */
+        /**
+         * Parses a var-int-prefixed list of [AssetMetadata] entries from [input].
+         *
+         * @throws IllegalArgumentException if the count is truncated, malformed, or exceeds
+         * [Int.MAX_VALUE], or if an entry fails to parse or [validate].
+         */
         private fun deserializeMetadataList(input: ByteArrayInput): List<AssetMetadata> {
             val count = input.readVarIntToInt()
             val metadata: MutableList<AssetMetadata> = mutableListOf()
-            for (i in 0 until count) {
+            (0 until count).forEach { _ ->
                 metadata.add(AssetMetadata.fromBytesInput(input))
             }
             return metadata
