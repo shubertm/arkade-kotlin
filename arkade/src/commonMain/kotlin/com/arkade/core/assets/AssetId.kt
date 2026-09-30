@@ -95,7 +95,7 @@ class AssetId(
 
         fun fromBytes(bytes: ByteArray): AssetId {
             require(bytes.isNotEmpty()) { "Missing asset id" }
-            require(bytes.size >= ASSET_ID_SIZE) { "Invalid asset id length: got ${bytes.size} bytes, expected $ASSET_ID_SIZE bytes" }
+            require(bytes.size == ASSET_ID_SIZE) { "Invalid asset id length: got ${bytes.size} bytes, expected $ASSET_ID_SIZE bytes" }
             return fromBytesInput(ByteArrayInput(bytes))
         }
 
