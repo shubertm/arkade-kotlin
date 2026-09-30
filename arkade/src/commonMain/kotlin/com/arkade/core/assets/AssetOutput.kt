@@ -45,7 +45,7 @@ class AssetOutput(
      * positive.
      */
     private fun validate() {
-        require(vOut >= 0) { "Invalid vOut: $vOut" }
+        require(vOut in 0..0xFFFF) { "Invalid vOut: $vOut" }
         require(amount > 0) { "Asset output amount must be greater than 0" }
     }
 
