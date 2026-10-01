@@ -17,6 +17,11 @@ class AssetOutput(
         validate()
     }
 
+    /**
+     * Returns this output's binary representation in a new byte array.
+     *
+     * @see serializeTo
+     */
     fun serialize(): ByteArray {
         val output = ByteArrayOutput()
         serializeTo(output)
@@ -27,7 +32,7 @@ class AssetOutput(
      * Appends this output's type byte, little-endian uint16 [vOut], and var-int [amount] to [output].
      *
      * @throws IllegalArgumentException if [vOut] is outside `0..0xFFFF` or [amount] is not
-     * strictly positive. A [vOut] above `0xFFFF` leaves the type byte appended before failing.
+     * strictly positive. Validation completes before any bytes are appended to [output].
      */
     fun serializeTo(output: ByteArrayOutput) {
         validate()
