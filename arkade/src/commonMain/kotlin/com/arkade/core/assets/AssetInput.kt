@@ -60,6 +60,7 @@ class AssetInput(
     private fun validate() {
         require(type != Type.UNSPECIFIED) { "Asset input type not specified" }
         require(vIn in 0..0xFFFF) { "Invalid vIn: $vIn" }
+        require(amount > 0) { "Asset input amount must be greater than 0" }
         if (type == Type.INTENT) {
             requireNotNull(txId) { "Missing input intent txId" }
             require(txId.size == TX_HASH_SIZE) { "Invalid intent txId length" }
