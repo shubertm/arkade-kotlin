@@ -35,6 +35,12 @@ class AssetInput(
     /** Returns the stored transaction id as lowercase hex, or `null` if none was supplied. */
     fun txIdHex() = txId()?.toHexString()
 
+    /**
+     * Returns this input's binary representation in a new byte array.
+     *
+     * @see serializeTo
+     * @throws IllegalArgumentException if [amount] is negative.
+     */
     fun serialize(): ByteArray {
         val output = ByteArrayOutput()
         serializeTo(output)
@@ -166,6 +172,7 @@ class AssetInput(
          * @param intentTxId The referenced intent transaction's 32-byte id; must not be all zeros.
          * @param index The input index in that transaction, in `0..0xFFFF`.
          * @param amount The asset amount to consume; stored without validation, including zero.
+         * Negative amounts are rejected when serialized.
          * @throws IllegalArgumentException if [intentTxId] or [index] violates these constraints.
          */
         fun createIntent(
