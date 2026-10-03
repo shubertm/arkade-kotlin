@@ -39,7 +39,7 @@ class AssetInput(
      * Returns this input's binary representation in a new byte array.
      *
      * @see serializeTo
-     * @throws IllegalArgumentException if [amount] is negative.
+     * @throws IllegalArgumentException if [amount] is zero or negative for [Type.LOCAL] or [amount] is negative for [Type.INTENT].
      */
     fun serialize(): ByteArray {
         val output = ByteArrayOutput()
@@ -51,8 +51,9 @@ class AssetInput(
      * Appends the type byte, the 32-byte transaction id for an intent input, the little-endian
      * uint16 [vIn], and the var-int [amount] to [output].
      *
-     * @throws IllegalArgumentException if [amount] is negative. The preceding fields remain
-     * appended to [output] when this fails.
+     * @throws IllegalArgumentException if [amount] is zero or negative for [type] == [Type.LOCAL] or [amount] is negative for [type] == [Type.INTENT].
+     *
+     * The preceding fields remain appended to [output] when this fails.
      */
     fun serializeTo(output: ByteArrayOutput) {
         validate()
@@ -67,15 +68,15 @@ class AssetInput(
     /**
      * Returns this input's serialized bytes as lowercase hex.
      *
-     * @throws IllegalArgumentException if [amount] is negative.
+     * @throws IllegalArgumentException if [amount] is zero or negative for [Type.LOCAL] or [amount] is negative for [Type.INTENT].
      */
     override fun toString(): String = serialize().toHexString()
 
     /**
-     * Validates the input reference; [amount] is not checked.
+     * Validates the input reference.
      *
      * @throws IllegalArgumentException if [type] is [Type.UNSPECIFIED], [vIn] is outside
-     * `0..0xFFFF`, or an intent input's [txId] is missing, is not 32 bytes, or is all zeros.
+     * `0..0xFFFF`, [amount] is zero or negative for [type] == [Type.LOCAL], [amount] is negative for [type] == [Type.INTENT], or an intent input's [txId] is missing, is not 32 bytes, or is all zeros.
      */
     private fun validate() {
         require(type != Type.UNSPECIFIED) { "Asset input type not specified" }
@@ -132,6 +133,7 @@ class AssetInput(
          *
          * @param input The buffer to read from.
          * @return The parsed [AssetInput].
+         *
          * @throws IllegalArgumentException if the type byte is missing, invalid, or [Type.UNSPECIFIED],
          * an intent's [txId] is truncated or all zeros, [vIn] is truncated, or [amount] is
          * truncated, malformed, or exceeds [Long.MAX_VALUE].
@@ -158,9 +160,8 @@ class AssetInput(
          * Creates an input referencing the containing transaction's input at [index].
          *
          * @param index The input index, in `0..0xFFFF`.
-         * @param amount The asset amount to consume; stored without validation, including zero.
-         * Negative amounts are rejected when serialized.
-         * @throws IllegalArgumentException if [index] is outside `0..0xFFFF`.
+         * @param amount The asset amount to consume.
+         * @throws IllegalArgumentException if [index] is outside `0..0xFFFF`, or [amount] is zero or negative.
          */
         fun create(
             index: Int,
@@ -175,9 +176,9 @@ class AssetInput(
          *
          * @param intentTxId The referenced intent transaction's 32-byte id; must not be all zeros.
          * @param index The input index in that transaction, in `0..0xFFFF`.
-         * @param amount The asset amount to consume; stored without validation, including zero.
-         * Negative amounts are rejected when serialized.
-         * @throws IllegalArgumentException if [intentTxId] or [index] violates these constraints.
+         * @param amount The asset amount to consume; including zero.
+         *
+         * @throws IllegalArgumentException if [intentTxId] or [index] violates these constraints, or [amount] is negative.
          */
         fun createIntent(
             intentTxId: ByteArray,
@@ -195,10 +196,10 @@ class AssetInput(
          * @param intentTxIdHex The referenced intent transaction's 32-byte id as 64 hexadecimal
          * digits, with either letter case; must not be all zeros.
          * @param index The input index in that transaction, in `0..0xFFFF`.
-         * @param amount The asset amount to consume; stored without validation, including zero.
-         * Negative amounts are rejected when serialized.
+         * @param amount The asset amount to consume, including zero.
+         *
          * @throws IllegalArgumentException if [intentTxIdHex] is empty, is not valid hex, does not
-         * encode 32 bytes, or is all zeros; or if [index] is outside `0..0xFFFF`.
+         * encode 32 bytes, or is all zeros; or if [index] is outside `0..0xFFFF`, or [amount] is negative.
          */
         fun createIntent(
             intentTxIdHex: String,
