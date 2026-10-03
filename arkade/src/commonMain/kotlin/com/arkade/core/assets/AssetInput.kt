@@ -8,51 +8,88 @@ import fr.acinq.bitcoin.io.readNBytes
  * An input spending an existing asset amount into an [AssetGroup].
  *
  * [Type.LOCAL] inputs reference an input of the same transaction as the containing [AssetGroup] by
- * its [vin] index. [Type.INTENT] inputs additionally carry the [txId] of an unrelated intent
+ * its [vIn] index. [Type.INTENT] inputs additionally carry the [txId] of an unrelated intent
  * transaction whose output is being consumed.
  *
  * @property type Whether this input references a local transaction input or an external intent.
- * @property vin The index of the spent input, interpreted according to [type].
+ * @property vIn The index of the spent input, interpreted according to [type].
  * @property amount The asset amount consumed by this input.
  * @property txId For [Type.INTENT] inputs, the id of the transaction being referenced; `null`
  * for [Type.LOCAL] inputs.
  */
 class AssetInput(
     val type: Type,
-    val vin: Int,
+    val vIn: Int,
     val amount: Long,
-    val txId: ByteArray? = null,
+    txId: ByteArray? = null,
 ) {
-    /**
-     * Validates the input reference; [amount] is not checked.
-     *
-     * @throws IllegalArgumentException if [type] is [Type.UNSPECIFIED], [vin] is outside
-     * `0..0xFFFF`, or an intent input's [txId] is missing, is not 32 bytes, or is all zeros.
-     */
-    private fun validate() {
-        require(type != Type.UNSPECIFIED) { "Asset input type not specified" }
-        require(vin in 0..0xFFFF) { "Invalid vin: $vin" }
-        if (type == Type.INTENT) {
-            requireNotNull(txId) { "Missing input intent txId" }
-            require(txId.size == TX_HASH_SIZE) { "Invalid intent txId length" }
-            require(!txId.all { it == 0.toByte() }) { "Missing input intent txId" }
-        }
+    private val txId: ByteArray? = txId?.copyOf()
+
+    init {
+        validate()
     }
 
+    /** Returns a copy of the stored transaction id, or `null` if none was supplied. */
+    fun txId() = txId?.copyOf()
+
+    /** Returns the stored transaction id as lowercase hex, or `null` if none was supplied. */
+    fun txIdHex() = txId()?.toHexString()
+
+    /**
+     * Returns this input's binary representation in a new byte array.
+     *
+     * @see serializeTo
+     * @throws IllegalArgumentException if [amount] is zero or negative for [Type.LOCAL] or [amount] is negative for [Type.INTENT].
+     */
     fun serialize(): ByteArray {
         val output = ByteArrayOutput()
         serializeTo(output)
         return output.toByteArray()
     }
 
+    /**
+     * Appends the type byte, the 32-byte transaction id for an intent input, the little-endian
+     * uint16 [vIn], and the var-int [amount] to [output].
+     *
+     * @throws IllegalArgumentException if [amount] is zero or negative for [type] == [Type.LOCAL] or [amount] is negative for [type] == [Type.INTENT].
+     *
+     * The preceding fields remain appended to [output] when this fails.
+     */
     fun serializeTo(output: ByteArrayOutput) {
         validate()
         output.write(type.ordinal)
         if (type == Type.INTENT && txId != null) {
             output.writeBytes(txId)
         }
-        output.writeUInt16LE(vin)
+        output.writeUInt16LE(vIn)
         output.writeVarInt(amount)
+    }
+
+    /**
+     * Returns this input's serialized bytes as lowercase hex.
+     *
+     * @throws IllegalArgumentException if [amount] is zero or negative for [Type.LOCAL] or [amount] is negative for [Type.INTENT].
+     */
+    override fun toString(): String = serialize().toHexString()
+
+    /**
+     * Validates the input reference.
+     *
+     * @throws IllegalArgumentException if [type] is [Type.UNSPECIFIED], [vIn] is outside
+     * `0..0xFFFF`, [amount] is zero or negative for [type] == [Type.LOCAL], [amount] is negative for [type] == [Type.INTENT], or an intent input's [txId] is missing, is not 32 bytes, or is all zeros.
+     */
+    private fun validate() {
+        require(type != Type.UNSPECIFIED) { "Asset input type not specified" }
+        require(vIn in 0..0xFFFF) { "Invalid vIn: $vIn" }
+        if (type == Type.LOCAL) {
+            require(amount > 0) { "Asset input amount must be greater than 0" }
+        }
+        if (type == Type.INTENT) {
+            requireNotNull(txId) { "Missing input intent txId" }
+            require(txId.size == TX_HASH_SIZE) { "Invalid intent txId length" }
+            require(!txId.all { it == 0.toByte() }) { "Missing input intent txId" }
+            require(amount >= 0) { "Asset input amount must not be negative" }
+        }
     }
 
     /** The kind of input being referenced. */
@@ -75,11 +112,11 @@ class AssetInput(
              * [INTENT].
              * @throws IllegalArgumentException if [value] is not one of the above.
              */
-            fun fromByte(value: Byte): Type =
+            fun fromByte(value: Int): Type =
                 when (value) {
-                    0.toByte() -> UNSPECIFIED
-                    1.toByte() -> LOCAL
-                    2.toByte() -> INTENT
+                    0 -> UNSPECIFIED
+                    1 -> LOCAL
+                    2 -> INTENT
                     else -> throw IllegalArgumentException("Invalid asset input type: $value")
                 }
         }
@@ -88,41 +125,60 @@ class AssetInput(
     companion object {
         /**
          * Parses an [AssetInput] from [input]'s binary representation: a type byte followed by,
-         * for [Type.LOCAL], a little-endian uint16 [vin] and a var-int [amount]; or for
-         * [Type.INTENT], a 32-byte [txId] followed by [vin] and [amount] in the same encoding.
+         * for [Type.LOCAL], a little-endian uint16 [vIn] and a var-int [amount]; or for
+         * [Type.INTENT], a 32-byte [txId] followed by [vIn] and [amount] in the same encoding.
          *
-         * Does not validate the parsed input reference. If fewer than 32 bytes remain when
-         * reading an intent's [txId], it is left `null` and [vin] and [amount] are read from
-         * the remaining bytes.
+         * Validates the parsed input reference, rejecting missing or all-zero intent transaction
+         * ids. An amount of zero is allowed.
          *
          * @param input The buffer to read from.
          * @return The parsed [AssetInput].
-         * @throws IllegalArgumentException if the type byte is invalid or is [Type.UNSPECIFIED],
-         * [vin] is truncated, or [amount] is truncated, malformed, or exceeds [Long.MAX_VALUE].
+         *
+         * @throws IllegalArgumentException if the type byte is missing, invalid, or [Type.UNSPECIFIED],
+         * an intent's [txId] is truncated or all zeros, [vIn] is truncated, or [amount] is
+         * truncated, malformed, or exceeds [Long.MAX_VALUE].
          */
         fun fromBytesInput(input: ByteArrayInput): AssetInput =
-            when (Type.fromByte(input.read().toByte())) {
+            when (Type.fromByte(input.read())) {
                 Type.LOCAL -> {
                     val vin = input.readUInt16LE()
                     val amount = input.readVarIntToLong()
                     AssetInput(Type.LOCAL, vin, amount)
                 }
+
                 Type.INTENT -> {
                     val txId = input.readNBytes(TX_HASH_SIZE)
                     val vin = input.readUInt16LE()
                     val amount = input.readVarIntToLong()
                     AssetInput(Type.INTENT, vin, amount, txId)
                 }
+
                 Type.UNSPECIFIED -> throw IllegalArgumentException("Asset input type unspecified")
             }
+
+        /**
+         * Creates an input referencing the containing transaction's input at [index].
+         *
+         * @param index The input index, in `0..0xFFFF`.
+         * @param amount The asset amount to consume.
+         * @throws IllegalArgumentException if [index] is outside `0..0xFFFF`, or [amount] is zero or negative.
+         */
+        fun create(
+            index: Int,
+            amount: Long,
+        ): AssetInput {
+            val input = AssetInput(Type.LOCAL, index, amount)
+            return input
+        }
 
         /**
          * Creates an intent input after validating its transaction id and input index.
          *
          * @param intentTxId The referenced intent transaction's 32-byte id; must not be all zeros.
          * @param index The input index in that transaction, in `0..0xFFFF`.
-         * @param amount The asset amount to consume; stored without validation, including zero.
-         * @throws IllegalArgumentException if [intentTxId] or [index] violates these constraints.
+         * @param amount The asset amount to consume; including zero.
+         *
+         * @throws IllegalArgumentException if [intentTxId] or [index] violates these constraints, or [amount] is negative.
          */
         fun createIntent(
             intentTxId: ByteArray,
@@ -131,8 +187,29 @@ class AssetInput(
         ): AssetInput {
             require(intentTxId.size == TX_HASH_SIZE) { "Invalid input intent txId length" }
             val input = AssetInput(Type.INTENT, index, amount, intentTxId)
-            input.validate()
             return input
+        }
+
+        /**
+         * Creates an intent input from a hexadecimal transaction id.
+         *
+         * @param intentTxIdHex The referenced intent transaction's 32-byte id as 64 hexadecimal
+         * digits, with either letter case; must not be all zeros.
+         * @param index The input index in that transaction, in `0..0xFFFF`.
+         * @param amount The asset amount to consume, including zero.
+         *
+         * @throws IllegalArgumentException if [intentTxIdHex] is empty, is not valid hex, does not
+         * encode 32 bytes, or is all zeros; or if [index] is outside `0..0xFFFF`, or [amount] is negative.
+         */
+        fun createIntent(
+            intentTxIdHex: String,
+            index: Int,
+            amount: Long,
+        ): AssetInput {
+            require(intentTxIdHex.isNotEmpty()) { "Missing input intent txId" }
+            val intentTxId = intentTxIdHex.hexToByteArray()
+            require(intentTxId.size == TX_HASH_SIZE) { "Invalid input intent txId length" }
+            return AssetInput(Type.INTENT, index, amount, intentTxId)
         }
     }
 }
