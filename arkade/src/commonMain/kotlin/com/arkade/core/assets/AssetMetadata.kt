@@ -11,9 +11,24 @@ import fr.acinq.bitcoin.io.ByteArrayOutput
  * @property value The metadata value; must be non-empty.
  */
 class AssetMetadata(
-    val key: ByteArray,
-    val value: ByteArray,
+    key: ByteArray,
+    value: ByteArray,
 ) {
+    private val key: ByteArray = key.copyOf()
+    private val value: ByteArray = value.copyOf()
+
+    init {
+        validate()
+    }
+
+    fun rawKey() = key.copyOf()
+
+    fun key() = key.decodeToString()
+
+    fun rawValue() = value.copyOf()
+
+    fun value() = value.decodeToString()
+
     /**
      * Validates this metadata entry's fields.
      *
@@ -36,7 +51,19 @@ class AssetMetadata(
         output.writeVarBytes(value)
     }
 
+    override fun toString(): String = serialize().toHexString()
+
     companion object {
+        fun create(
+            key: String,
+            value: String,
+        ): AssetMetadata = create(key.encodeToByteArray(), value.encodeToByteArray())
+
+        fun create(
+            key: ByteArray,
+            value: ByteArray,
+        ): AssetMetadata = AssetMetadata(key, value)
+
         /**
          * Parses an [AssetMetadata] from [input]'s binary representation: a var-length [key]
          * followed by a var-length [value], each encoded as in [readVarBytes].
@@ -58,7 +85,6 @@ class AssetMetadata(
                 }.getOrElse { throw IllegalArgumentException("Invalid asset metadata length") }
 
             val metadata = AssetMetadata(key, value)
-            metadata.validate()
             return metadata
         }
     }
