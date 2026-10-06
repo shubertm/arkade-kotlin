@@ -105,7 +105,9 @@ class AssetMetadataList(
         fun fromBytes(bytes: ByteArray): AssetMetadataList {
             require(bytes.isNotEmpty()) { "Missing metadata list" }
             val bytesInput = ByteArrayInput(bytes)
-            return fromBytesInput(bytesInput)
+            val metadataList = fromBytesInput(bytesInput)
+            require(bytesInput.availableBytes == 0) { "Unexpected trailing bytes in metadata list" }
+            return metadataList
         }
 
         fun fromString(hex: String): AssetMetadataList {
