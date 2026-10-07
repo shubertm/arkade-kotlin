@@ -7,13 +7,21 @@ import fr.acinq.bitcoin.io.ByteArrayOutput
  * References an asset either by its globally unique [AssetId] or by the index of the
  * [AssetGroup] that issues/controls it within the same extension [Packet].
  *
- * Exactly one of [assetId] or [groupIndex] is populated, depending on [type]: [Type.BY_ID]
- * populates [assetId], and [Type.BY_GROUP] populates [groupIndex].
+ * [type] selects the required field: [Type.BY_ID] uses [assetId], and [Type.BY_GROUP]
+ * uses [groupIndex]. The other field is ignored by validation and serialization. Prefer
+ * [fromId] and [fromGroupIndex], which leave the unused field null.
+ *
+ * The binary encoding starts with a type byte: `1` followed by a 34-byte [AssetId]
+ * (35 bytes total), or `2` followed by an unsigned little-endian 16-bit group index
+ * (3 bytes total). Type `0` ([Type.UNSPECIFIED]) is not a valid reference.
  *
  * @property type Which of [assetId] or [groupIndex] identifies the referenced asset.
- * @property assetId The referenced asset's id, present only when [type] is [Type.BY_ID].
- * @property groupIndex The index of the referenced [AssetGroup] within the same packet, present
- * only when [type] is [Type.BY_GROUP].
+ * @property assetId The referenced asset's id; required when [type] is [Type.BY_ID].
+ * @property groupIndex The zero-based index of the referenced [AssetGroup] within the same
+ * packet; required when [type] is [Type.BY_GROUP] and must be in `0..65535`.
+ * @throws IllegalArgumentException if the selected field is null or a selected [groupIndex]
+ * is outside `0..65535`.
+ * @throws IllegalStateException if [type] is [Type.UNSPECIFIED].
  */
 class AssetRef(
     val type: Type,
@@ -24,6 +32,16 @@ class AssetRef(
         validate()
     }
 
+    /**
+     * Checks that the field selected by [type] is present and, for [Type.BY_GROUP], in range.
+     *
+     * The unused field is ignored. This does not check whether [groupIndex] identifies an
+     * existing group in a particular [Packet].
+     *
+     * @throws IllegalArgumentException if the selected field is null or a selected [groupIndex]
+     * is outside `0..65535`.
+     * @throws IllegalStateException if [type] is [Type.UNSPECIFIED].
+     */
     fun validate() {
         when (type) {
             Type.BY_ID -> {
@@ -37,12 +55,14 @@ class AssetRef(
         }
     }
 
+    /** Returns the binary encoding: a type byte followed by the selected id or group index. */
     fun serialize(): ByteArray {
         val output = ByteArrayOutput()
         serializeTo(output)
         return output.toByteArray()
     }
 
+    /** Validates this reference and appends its binary encoding to [output]. */
     fun serializeTo(output: ByteArrayOutput) {
         validate()
         output.write(type.ordinal)
@@ -57,23 +77,25 @@ class AssetRef(
         }
     }
 
+    /** Returns the lowercase hexadecimal representation of [serialize], without a prefix. */
     override fun toString(): String = serialize().toHexString()
 
-    /** The encoding used to identify the referenced asset. */
+    /** The encoding used to identify the referenced asset; ordinal values are the wire type bytes. */
     enum class Type {
-        /** No reference; not a valid value for a parsed [AssetRef]. */
+        /** Wire value `0`; rejected when constructing or parsing an [AssetRef]. */
         UNSPECIFIED,
 
-        /** The asset is identified by its [AssetId]. */
+        /** Wire value `1`; the asset is identified by its [AssetId]. */
         BY_ID,
 
-        /** The asset is identified by the index of its issuing [AssetGroup]. */
+        /** Wire value `2`; the asset is identified by a group index within the same [Packet]. */
         BY_GROUP,
         ;
 
         companion object {
             /**
              * Maps the single-byte wire encoding to a [Type].
+             * Recognizes [UNSPECIFIED], although it cannot be used to construct an [AssetRef].
              *
              * @param value The encoded type byte: `0` for [UNSPECIFIED], `1` for [BY_ID], `2`
              * for [BY_GROUP].
@@ -95,9 +117,13 @@ class AssetRef(
          * either an [AssetId] (for [Type.BY_ID]) or a little-endian uint16 group index (for
          * [Type.BY_GROUP]).
          *
+         * Consumes one reference (35 bytes for an id or 3 bytes for a group index), leaving
+         * trailing bytes unread. Parsing failures may leave [input] partially consumed.
+         *
          * @param input The buffer to read from.
          * @return The parsed [AssetRef].
-         * @throws IllegalArgumentException if the type byte is invalid or is [Type.UNSPECIFIED].
+         * @throws IllegalArgumentException if the input is empty or truncated, the type byte
+         * is unknown or [Type.UNSPECIFIED], or the encoded asset id has an all-zero transaction id.
          */
         fun fromBytesInput(input: ByteArrayInput): AssetRef {
             val type = Type.fromByte(input.read().toByte())
@@ -114,6 +140,13 @@ class AssetRef(
             }
         }
 
+        /**
+         * Parses exactly one reference from [bytes], rejecting any trailing bytes.
+         *
+         * @throws IllegalArgumentException if [bytes] is empty, truncated, contains trailing
+         * bytes, has an unknown or [Type.UNSPECIFIED] type byte, or encodes an asset id with
+         * an all-zero transaction id.
+         */
         fun fromBytes(bytes: ByteArray): AssetRef {
             require(bytes.isNotEmpty()) { "Missing asset ref" }
             val bytesInput = ByteArrayInput(bytes)
@@ -122,8 +155,15 @@ class AssetRef(
             return assetRef
         }
 
+        /** Creates a [Type.BY_ID] reference to [assetId], with a null [groupIndex]. */
         fun fromId(assetId: AssetId): AssetRef = AssetRef(Type.BY_ID, assetId, null)
 
+        /**
+         * Creates a [Type.BY_GROUP] reference with a null [assetId].
+         *
+         * @param groupIndex The zero-based index of the referenced [AssetGroup] in the same [Packet].
+         * @throws IllegalArgumentException if [groupIndex] is outside `0..65535`.
+         */
         fun fromGroupIndex(groupIndex: Int): AssetRef = AssetRef(Type.BY_GROUP, null, groupIndex)
     }
 }
