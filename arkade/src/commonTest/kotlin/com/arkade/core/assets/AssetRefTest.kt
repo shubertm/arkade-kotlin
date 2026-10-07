@@ -71,6 +71,10 @@ class AssetRefTest {
         val assetRef = AssetRef.fromId(assetId)
         val deserializedAssetRef = AssetRef.fromBytes(assetRef.serialize())
         assertEquals(Type.BY_ID, deserializedAssetRef.type)
+        assertEquals(
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            deserializedAssetRef.assetId?.txIdHex(),
+        )
         assertEquals(7, deserializedAssetRef.assetId?.groupIndex)
     }
 
