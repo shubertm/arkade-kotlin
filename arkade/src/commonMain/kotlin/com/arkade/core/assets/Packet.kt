@@ -1,6 +1,7 @@
 package com.arkade.core.assets
 
 import fr.acinq.bitcoin.io.ByteArrayInput
+import fr.acinq.bitcoin.io.ByteArrayOutput
 
 /**
  * The Arkade asset [ExtensionPacket]: a list of [AssetGroup]s describing the asset issuance and
@@ -53,12 +54,23 @@ class Packet(
      * to its binary representation.
      */
     override fun serializePacketData(): ByteArray {
-        TODO("Not yet implemented")
+        val output = ByteArrayOutput()
+        output.writeVarInt(groups.size.toLong())
+        groups.forEach { group ->
+            group.serializeTo(output)
+        }
+        return output.toByteArray()
     }
 
     companion object {
         /** The [ExtensionPacket.type] byte identifying an asset [Packet]. */
         const val PACKET_TYPE: Byte = 0x00
+
+        fun create(groups: List<AssetGroup>): Packet {
+            val packet = Packet(groups)
+            packet.validate()
+            return packet
+        }
 
         /**
          * Parses a [Packet] from its complete binary representation.

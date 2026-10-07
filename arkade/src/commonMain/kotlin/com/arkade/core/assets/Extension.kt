@@ -2,7 +2,10 @@ package com.arkade.core.assets
 
 import fr.acinq.bitcoin.OP_PUSHDATA
 import fr.acinq.bitcoin.OP_RETURN
+import fr.acinq.bitcoin.Satoshi
 import fr.acinq.bitcoin.Script
+import fr.acinq.bitcoin.Transaction
+import fr.acinq.bitcoin.TxOut
 import fr.acinq.bitcoin.io.ByteArrayInput
 import fr.acinq.bitcoin.io.ByteArrayOutput
 import fr.acinq.bitcoin.io.readNBytes
@@ -15,7 +18,7 @@ import fr.acinq.bitcoin.io.readNBytes
  * [ExtensionPacket.type].
  */
 class Extension(
-    private val packets: List<ExtensionPacket>,
+    val packets: List<ExtensionPacket>,
 ) {
     /** Returns the asset [Packet] carried by this extension, or `null` if none is present. */
     fun getAssetPacket(): Packet? {
@@ -23,6 +26,21 @@ class Extension(
             if (packet is Packet) return packet
         }
         return null
+    }
+
+    fun serialize(): ByteArray {
+        val output = ByteArrayOutput()
+        output.write(ArkadeMagic)
+        packets.forEach { packet ->
+            output.write(packet.type.toInt())
+            output.writeVarBytes(packet.serializePacketData())
+        }
+        return buildOpReturnScript(output.toByteArray())
+    }
+
+    fun toTransactionOutput(): TxOut {
+        val scriptPubKey = serialize()
+        return TxOut(Satoshi(0), scriptPubKey)
     }
 
     companion object {
@@ -68,8 +86,12 @@ class Extension(
          * extension payload (see [fromPayload]).
          */
         fun fromScript(script: ByteArray): Extension {
-            val script = Script.parse(script)
-            require(script.isNotEmpty()) { "Missing OP_RETURN" }
+            val script =
+                runCatching { Script.parse(script) }.getOrElse { _ ->
+                    throw IllegalArgumentException("Invalid extension script")
+                }
+
+            require(script.isNotEmpty()) { "missing OP_RETURN" }
             require(script[0] == OP_RETURN) { "Expected OP_RETURN" }
 
             val payload = ByteArrayOutput()
@@ -80,6 +102,16 @@ class Extension(
                 }
             }
             return fromPayload(payload.toByteArray())
+        }
+
+        fun fromTransaction(tx: Transaction): Extension? {
+            for (output in tx.txOut) {
+                val scriptPubKey = output.publicKeyScript.toByteArray()
+                if (isExtension(scriptPubKey)) {
+                    return fromScript(scriptPubKey)
+                }
+            }
+            return null
         }
 
         /**
@@ -147,5 +179,13 @@ class Extension(
                 Packet.PACKET_TYPE -> Packet.fromBytes(packetData)
                 else -> UnknownPacket(packetType, packetData)
             }
+
+        internal fun buildOpReturnScript(data: ByteArray): ByteArray =
+            Script.write(
+                listOf(
+                    OP_RETURN,
+                    OP_PUSHDATA(data),
+                ),
+            )
     }
 }
