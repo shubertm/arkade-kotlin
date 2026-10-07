@@ -31,6 +31,7 @@ class AssetRef(
             }
             Type.BY_GROUP -> {
                 require(groupIndex != null) { "Missing group index for ${type.name} asset ref" }
+                require(groupIndex in 0..0xFFFF) { "Invalid group index: $groupIndex" }
             }
             Type.UNSPECIFIED -> throw IllegalStateException("Cannot validate unspecified asset ref")
         }
