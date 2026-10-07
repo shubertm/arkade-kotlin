@@ -20,6 +20,10 @@ class AssetRef(
     val assetId: AssetId?,
     val groupIndex: Int?,
 ) {
+    init {
+        validate()
+    }
+
     fun validate() {
         when (type) {
             Type.BY_ID -> {
@@ -27,6 +31,7 @@ class AssetRef(
             }
             Type.BY_GROUP -> {
                 require(groupIndex != null) { "Missing group index for ${type.name} asset ref" }
+                require(groupIndex in 0..0xFFFF) { "Invalid group index: $groupIndex" }
             }
             Type.UNSPECIFIED -> throw IllegalStateException("Cannot validate unspecified asset ref")
         }
@@ -51,6 +56,8 @@ class AssetRef(
             Type.UNSPECIFIED -> throw IllegalStateException("Cannot serialize unspecified asset ref")
         }
     }
+
+    override fun toString(): String = serialize().toHexString()
 
     /** The encoding used to identify the referenced asset. */
     enum class Type {
@@ -106,5 +113,17 @@ class AssetRef(
                 Type.UNSPECIFIED -> throw IllegalArgumentException("Asset ref type unspecified")
             }
         }
+
+        fun fromBytes(bytes: ByteArray): AssetRef {
+            require(bytes.isNotEmpty()) { "Missing asset ref" }
+            val bytesInput = ByteArrayInput(bytes)
+            val assetRef = fromBytesInput(bytesInput)
+            require(bytesInput.availableBytes == 0) { "Unexpected trailing bytes in asset ref" }
+            return assetRef
+        }
+
+        fun fromId(assetId: AssetId): AssetRef = AssetRef(Type.BY_ID, assetId, null)
+
+        fun fromGroupIndex(groupIndex: Int): AssetRef = AssetRef(Type.BY_GROUP, null, groupIndex)
     }
 }
