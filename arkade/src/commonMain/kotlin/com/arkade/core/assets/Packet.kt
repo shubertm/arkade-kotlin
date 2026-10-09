@@ -22,7 +22,7 @@ class Packet(
      * [AssetRef.Type.BY_GROUP] reference whose [AssetRef.groupIndex] is out of range for
      * [groups].
      */
-    fun validate() {
+    override fun validate() {
         require(groups.isNotEmpty()) { "Missing assets" }
 
         val seenAssetIds: HashSet<String> = hashSetOf()
@@ -54,6 +54,7 @@ class Packet(
      * to its binary representation.
      */
     override fun serializePacketData(): ByteArray {
+        validate()
         val output = ByteArrayOutput()
         output.writeVarInt(groups.size.toLong())
         groups.forEach { group ->

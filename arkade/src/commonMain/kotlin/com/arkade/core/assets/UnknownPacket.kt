@@ -14,6 +14,8 @@ class UnknownPacket(
     override val type: Byte,
     val data: ByteArray,
 ) : ExtensionPacket {
+    override fun validate() = Unit
+
     /** Returns [data] unchanged. */
     override fun serializePacketData(): ByteArray = data
 }

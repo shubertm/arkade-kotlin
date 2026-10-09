@@ -32,8 +32,9 @@ class Extension(
         val output = ByteArrayOutput()
         output.write(ArkadeMagic)
         packets.forEach { packet ->
+            val packetData = packet.serializePacketData()
             output.write(packet.type.toInt())
-            output.writeVarBytes(packet.serializePacketData())
+            output.writeVarBytes(packetData)
         }
         return buildOpReturnScript(output.toByteArray())
     }

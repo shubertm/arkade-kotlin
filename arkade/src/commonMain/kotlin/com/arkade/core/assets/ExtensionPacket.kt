@@ -10,6 +10,8 @@ interface ExtensionPacket {
     /** The packet type byte identifying this packet's format within an [Extension]. */
     val type: Byte
 
+    fun validate()
+
     /** Serializes this packet's body, excluding the leading [type] byte and length prefix. */
     fun serializePacketData(): ByteArray
 }
