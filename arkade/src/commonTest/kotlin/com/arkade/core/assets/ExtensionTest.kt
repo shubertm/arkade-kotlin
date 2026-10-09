@@ -138,15 +138,16 @@ class ExtensionTest {
     @Test
     fun create_extension_from_valid_tx() {
         val validExtensions =
-            extensions.jsonObject["valid"]?.jsonObject["newExtensionFromTx"]?.jsonArray
+            extensions.jsonObject["newExtensionFromTx"]?.jsonObject["valid"]?.jsonArray
         validExtensions?.forEach {
             val name = it.jsonObject["name"]?.jsonPrimitive?.content
             val hex = it.jsonObject["hex"]?.jsonPrimitive?.content!!
             val expectedCount = it.jsonObject["expectedPacketCount"]?.jsonPrimitive?.int
 
-            val tx = Transaction.read(hex)
+            val tx = Transaction.read(hex.hexToByteArray(), Transaction.SERIALIZE_TRANSACTION_NO_WITNESS)
+
             val extension = Extension.fromTransaction(tx)
-            assertNotNull(extension, "$name should find extension in the transaction")
+            assertNotNull(extension, "$name: should find extension in the transaction")
             assertEquals(
                 expectedCount,
                 extension.packets.size,
@@ -158,23 +159,22 @@ class ExtensionTest {
     @Test
     fun should_fail_creating_extension_from_invalid_tx() {
         val invalidExtensions =
-            extensions.jsonObject["invalid"]?.jsonObject["newExtensionFromTx"]?.jsonArray
+            extensions.jsonObject["newExtensionFromTx"]?.jsonObject["invalid"]?.jsonArray
 
         invalidExtensions?.forEach {
             val name = it.jsonObject["name"]?.jsonPrimitive?.content
             val hex = it.jsonObject["hex"]?.jsonPrimitive?.content!!
             val expectedError = it.jsonObject["expectedError"]?.jsonPrimitive?.content!!
-            val tx = Transaction.read(hex)
+            val tx = Transaction.read(hex, Transaction.SERIALIZE_TRANSACTION_NO_WITNESS)
 
             if (expectedError == "ErrExtensionNotFound") {
-                val error =
-                    assertNull(
-                        Extension.fromTransaction(tx),
-                        "$name should not find extension in the transaction",
-                    )
+                assertNull(
+                    Extension.fromTransaction(tx),
+                    "$name should not find extension in the transaction",
+                )
             } else {
                 assertFailsWith<IllegalArgumentException> {
-                    Extension.fromTransaction(tx) ?: throw IllegalArgumentException(expectedError)
+                    Extension.fromTransaction(tx)
                 }
             }
         }
