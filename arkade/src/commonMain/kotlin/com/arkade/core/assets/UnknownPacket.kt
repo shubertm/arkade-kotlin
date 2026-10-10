@@ -14,6 +14,7 @@ class UnknownPacket(
     override val type: Byte,
     val data: ByteArray,
 ) : ExtensionPacket {
+    /** Performs no checks because the packet body's format is unknown. */
     override fun validate() = Unit
 
     /** Returns [data] unchanged. */

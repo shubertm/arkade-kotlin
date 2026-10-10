@@ -48,10 +48,10 @@ class Packet(
     }
 
     /**
-     * Not yet implemented.
+     * Serializes the group count and [groups] in order, excluding the packet type and body length.
      *
-     * @throws NotImplementedError always; there is currently no way to serialize a [Packet] back
-     * to its binary representation.
+     * @throws IllegalArgumentException if this packet fails [validate], or a group or its fields
+     * fail validation during serialization.
      */
     override fun serializePacketData(): ByteArray {
         validate()
@@ -67,6 +67,13 @@ class Packet(
         /** The [ExtensionPacket.type] byte identifying an asset [Packet]. */
         const val PACKET_TYPE: Byte = 0x00
 
+        /**
+         * Creates a packet retaining [groups] in order and checking [validate]'s packet constraints.
+         * The individual groups are not validated here.
+         *
+         * @throws IllegalArgumentException if [groups] is empty, contains duplicate non-null asset
+         * ids, or has a control asset group index outside the list.
+         */
         fun create(groups: List<AssetGroup>): Packet {
             val packet = Packet(groups)
             packet.validate()
