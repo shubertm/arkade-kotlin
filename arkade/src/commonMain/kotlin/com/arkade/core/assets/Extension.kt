@@ -20,6 +20,10 @@ import fr.acinq.bitcoin.io.readNBytes
 class Extension(
     val packets: List<ExtensionPacket>,
 ) {
+    init {
+        validate()
+    }
+
     /** Returns the asset [Packet] carried by this extension, or `null` if none is present. */
     fun getAssetPacket(): Packet? {
         packets.forEach { packet ->
@@ -29,6 +33,7 @@ class Extension(
     }
 
     fun serialize(): ByteArray {
+        validate()
         val output = ByteArrayOutput()
         output.write(ArkadeMagic)
         packets.forEach { packet ->
@@ -42,6 +47,16 @@ class Extension(
     fun toTransactionOutput(): TxOut {
         val scriptPubKey = serialize()
         return TxOut(Satoshi(0), scriptPubKey)
+    }
+
+    private fun validate() {
+        require(packets.isNotEmpty()) { "Missing packets" }
+
+        val seenPacketsTypes: HashSet<Byte> = hashSetOf()
+        packets.forEach { packet ->
+            val isNotSeen = seenPacketsTypes.add(packet.type)
+            require(isNotSeen) { "Duplicate packet type: ${packet.type}" }
+        }
     }
 
     companion object {
@@ -153,13 +168,6 @@ class Extension(
                     throw IllegalArgumentException("Invalid extension payload", e)
                 }
 
-            require(packets.isNotEmpty()) { "Missing packets" }
-
-            val seenPacketsTypes: HashSet<Byte> = hashSetOf()
-            packets.forEach { packet ->
-                val isNotSeen = seenPacketsTypes.add(packet.type)
-                require(isNotSeen) { "Duplicate packet type: ${packet.type}" }
-            }
             return Extension(packets)
         }
 
