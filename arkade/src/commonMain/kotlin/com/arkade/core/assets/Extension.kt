@@ -16,6 +16,8 @@ import fr.acinq.bitcoin.io.readNBytes
  *
  * @property packets The packets carried by this extension, each with a unique
  * [ExtensionPacket.type].
+ * @constructor Checks packet presence and type uniqueness without validating packet bodies.
+ * @throws IllegalArgumentException if [packets] is empty or contains duplicate packet types.
  */
 class Extension(
     val packets: List<ExtensionPacket>,
@@ -32,6 +34,13 @@ class Extension(
         return null
     }
 
+    /**
+     * Returns the complete `OP_RETURN` script containing the Arkade prefix and [packets] in order.
+     * Packet serialization errors propagate to the caller.
+     *
+     * @throws IllegalArgumentException if [packets] is empty, contains duplicate packet types,
+     * or an asset packet or its groups fail validation during serialization.
+     */
     fun serialize(): ByteArray {
         validate()
         val output = ByteArrayOutput()
@@ -44,11 +53,22 @@ class Extension(
         return buildOpReturnScript(output.toByteArray())
     }
 
+    /**
+     * Creates an output worth zero satoshis with the script returned by [serialize].
+     * Serialization errors propagate to the caller.
+     *
+     * @throws IllegalArgumentException if extension or asset validation fails in [serialize].
+     */
     fun toTransactionOutput(): TxOut {
         val scriptPubKey = serialize()
         return TxOut(Satoshi(0), scriptPubKey)
     }
 
+    /**
+     * Checks packet presence and type uniqueness without validating packet bodies.
+     *
+     * @throws IllegalArgumentException if [packets] is empty or contains duplicate packet types.
+     */
     private fun validate() {
         require(packets.isNotEmpty()) { "Missing packets" }
 
@@ -120,6 +140,13 @@ class Extension(
             return fromPayload(payload.toByteArray())
         }
 
+        /**
+         * Parses the first output in [tx] whose script matches [isExtension], or returns `null`
+         * if none matches. Scripts that cannot be parsed are skipped.
+         *
+         * @throws IllegalArgumentException if the first matching output has an invalid extension
+         * payload (see [fromScript]); later outputs are not searched in that case.
+         */
         fun fromTransaction(tx: Transaction): Extension? {
             for (output in tx.txOut) {
                 val scriptPubKey = output.publicKeyScript.toByteArray()
@@ -189,6 +216,7 @@ class Extension(
                 else -> UnknownPacket(packetType, packetData)
             }
 
+        /** Wraps [data] in an `OP_RETURN` script without adding the Arkade prefix. */
         internal fun buildOpReturnScript(data: ByteArray): ByteArray =
             Script.write(
                 listOf(

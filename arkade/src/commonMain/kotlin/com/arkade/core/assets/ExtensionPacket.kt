@@ -10,6 +10,11 @@ interface ExtensionPacket {
     /** The packet type byte identifying this packet's format within an [Extension]. */
     val type: Byte
 
+    /**
+     * Checks the constraints defined by this packet type; unknown packet bodies are not checked.
+     *
+     * @throws IllegalArgumentException if a known packet violates its validation constraints.
+     */
     fun validate()
 
     /** Serializes this packet's body, excluding the leading [type] byte and length prefix. */
