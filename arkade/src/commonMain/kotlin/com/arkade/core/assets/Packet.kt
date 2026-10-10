@@ -1,6 +1,7 @@
 package com.arkade.core.assets
 
 import fr.acinq.bitcoin.io.ByteArrayInput
+import fr.acinq.bitcoin.io.ByteArrayOutput
 
 /**
  * The Arkade asset [ExtensionPacket]: a list of [AssetGroup]s describing the asset issuance and
@@ -21,7 +22,7 @@ class Packet(
      * [AssetRef.Type.BY_GROUP] reference whose [AssetRef.groupIndex] is out of range for
      * [groups].
      */
-    fun validate() {
+    override fun validate() {
         require(groups.isNotEmpty()) { "Missing assets" }
 
         val seenAssetIds: HashSet<String> = hashSetOf()
@@ -47,18 +48,37 @@ class Packet(
     }
 
     /**
-     * Not yet implemented.
+     * Serializes the group count and [groups] in order, excluding the packet type and body length.
      *
-     * @throws NotImplementedError always; there is currently no way to serialize a [Packet] back
-     * to its binary representation.
+     * @throws IllegalArgumentException if this packet fails [validate], or a group or its fields
+     * fail validation during serialization.
      */
     override fun serializePacketData(): ByteArray {
-        TODO("Not yet implemented")
+        validate()
+        val output = ByteArrayOutput()
+        output.writeVarInt(groups.size.toLong())
+        groups.forEach { group ->
+            group.serializeTo(output)
+        }
+        return output.toByteArray()
     }
 
     companion object {
         /** The [ExtensionPacket.type] byte identifying an asset [Packet]. */
         const val PACKET_TYPE: Byte = 0x00
+
+        /**
+         * Creates a packet retaining [groups] in order and checking [validate]'s packet constraints.
+         * The individual groups are not validated here.
+         *
+         * @throws IllegalArgumentException if [groups] is empty, contains duplicate non-null asset
+         * ids, or has a control asset group index outside the list.
+         */
+        fun create(groups: List<AssetGroup>): Packet {
+            val packet = Packet(groups)
+            packet.validate()
+            return packet
+        }
 
         /**
          * Parses a [Packet] from its complete binary representation.

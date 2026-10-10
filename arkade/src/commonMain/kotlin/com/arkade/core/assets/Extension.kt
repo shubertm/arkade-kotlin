@@ -2,7 +2,10 @@ package com.arkade.core.assets
 
 import fr.acinq.bitcoin.OP_PUSHDATA
 import fr.acinq.bitcoin.OP_RETURN
+import fr.acinq.bitcoin.Satoshi
 import fr.acinq.bitcoin.Script
+import fr.acinq.bitcoin.Transaction
+import fr.acinq.bitcoin.TxOut
 import fr.acinq.bitcoin.io.ByteArrayInput
 import fr.acinq.bitcoin.io.ByteArrayOutput
 import fr.acinq.bitcoin.io.readNBytes
@@ -13,16 +16,67 @@ import fr.acinq.bitcoin.io.readNBytes
  *
  * @property packets The packets carried by this extension, each with a unique
  * [ExtensionPacket.type].
+ * @constructor Checks packet presence and type uniqueness without validating packet bodies.
+ * @throws IllegalArgumentException if [packets] is empty or contains duplicate packet types.
  */
 class Extension(
-    private val packets: List<ExtensionPacket>,
+    val packets: List<ExtensionPacket>,
 ) {
+    init {
+        validate()
+    }
+
     /** Returns the asset [Packet] carried by this extension, or `null` if none is present. */
     fun getAssetPacket(): Packet? {
         packets.forEach { packet ->
             if (packet is Packet) return packet
         }
         return null
+    }
+
+    /**
+     * Returns the complete `OP_RETURN` script containing the Arkade prefix and [packets] in order.
+     * Packet serialization errors propagate to the caller.
+     *
+     * @throws IllegalArgumentException if [packets] is empty, contains duplicate packet types,
+     * or an asset packet or its groups fail validation during serialization.
+     */
+    fun serialize(): ByteArray {
+        validate()
+        val output = ByteArrayOutput()
+        output.write(ArkadeMagic)
+        packets.forEach { packet ->
+            val packetData = packet.serializePacketData()
+            output.write(packet.type.toInt())
+            output.writeVarBytes(packetData)
+        }
+        return buildOpReturnScript(output.toByteArray())
+    }
+
+    /**
+     * Creates an output worth zero satoshis with the script returned by [serialize].
+     * Serialization errors propagate to the caller.
+     *
+     * @throws IllegalArgumentException if extension or asset validation fails in [serialize].
+     */
+    fun toTransactionOutput(): TxOut {
+        val scriptPubKey = serialize()
+        return TxOut(Satoshi(0), scriptPubKey)
+    }
+
+    /**
+     * Checks packet presence and type uniqueness without validating packet bodies.
+     *
+     * @throws IllegalArgumentException if [packets] is empty or contains duplicate packet types.
+     */
+    private fun validate() {
+        require(packets.isNotEmpty()) { "Missing packets" }
+
+        val seenPacketsTypes: HashSet<Byte> = hashSetOf()
+        packets.forEach { packet ->
+            val isNotSeen = seenPacketsTypes.add(packet.type)
+            require(isNotSeen) { "Duplicate packet type: ${packet.type}" }
+        }
     }
 
     companion object {
@@ -68,8 +122,12 @@ class Extension(
          * extension payload (see [fromPayload]).
          */
         fun fromScript(script: ByteArray): Extension {
-            val script = Script.parse(script)
-            require(script.isNotEmpty()) { "Missing OP_RETURN" }
+            val script =
+                runCatching { Script.parse(script) }.getOrElse { _ ->
+                    throw IllegalArgumentException("Invalid extension script")
+                }
+
+            require(script.isNotEmpty()) { "missing OP_RETURN" }
             require(script[0] == OP_RETURN) { "Expected OP_RETURN" }
 
             val payload = ByteArrayOutput()
@@ -80,6 +138,23 @@ class Extension(
                 }
             }
             return fromPayload(payload.toByteArray())
+        }
+
+        /**
+         * Parses the first output in [tx] whose script matches [isExtension], or returns `null`
+         * if none matches. Scripts that cannot be parsed are skipped.
+         *
+         * @throws IllegalArgumentException if the first matching output has an invalid extension
+         * payload (see [fromScript]); later outputs are not searched in that case.
+         */
+        fun fromTransaction(tx: Transaction): Extension? {
+            for (output in tx.txOut) {
+                val scriptPubKey = output.publicKeyScript.toByteArray()
+                if (isExtension(scriptPubKey)) {
+                    return fromScript(scriptPubKey)
+                }
+            }
+            return null
         }
 
         /**
@@ -120,13 +195,6 @@ class Extension(
                     throw IllegalArgumentException("Invalid extension payload", e)
                 }
 
-            require(packets.isNotEmpty()) { "Missing packets" }
-
-            val seenPacketsTypes: HashSet<Byte> = hashSetOf()
-            packets.forEach { packet ->
-                val isNotSeen = seenPacketsTypes.add(packet.type)
-                require(isNotSeen) { "Duplicate packet type: ${packet.type}" }
-            }
             return Extension(packets)
         }
 
@@ -147,5 +215,14 @@ class Extension(
                 Packet.PACKET_TYPE -> Packet.fromBytes(packetData)
                 else -> UnknownPacket(packetType, packetData)
             }
+
+        /** Wraps [data] in an `OP_RETURN` script without adding the Arkade prefix. */
+        internal fun buildOpReturnScript(data: ByteArray): ByteArray =
+            Script.write(
+                listOf(
+                    OP_RETURN,
+                    OP_PUSHDATA(data),
+                ),
+            )
     }
 }
