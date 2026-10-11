@@ -116,7 +116,11 @@ class Packet(
 
         fun fromString(hex: String): Packet {
             require(hex.isNotEmpty()) { "Missing packet data" }
-            return fromBytes(hex.hexToByteArray())
+            val bytes =
+                runCatching { hex.hexToByteArray() }.getOrElse {
+                    throw IllegalArgumentException("Invalid packet format, must be hex")
+                }
+            return fromBytes(bytes)
         }
 
         fun fromScript(script: ByteArray): Packet {
