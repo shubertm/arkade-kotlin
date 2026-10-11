@@ -1,5 +1,6 @@
 package com.arkade.core.assets
 
+import fr.acinq.bitcoin.TxOut
 import fr.acinq.bitcoin.io.ByteArrayInput
 import fr.acinq.bitcoin.io.ByteArrayOutput
 
@@ -13,6 +14,26 @@ class Packet(
     val groups: List<AssetGroup>,
 ) : ExtensionPacket {
     override val type: Byte = PACKET_TYPE
+
+    private val extension = Extension(listOf(this))
+
+    init {
+        validate()
+    }
+
+    fun serialize(): ByteArray = extension.serialize()
+
+    fun toTxOut(): TxOut = extension.toTransactionOutput()
+
+    fun leafTxPacket(intentTxId: ByteArray): Packet {
+        val leafGroups =
+            groups.map {
+                it.toBatchLeafAssetGroup(intentTxId)
+            }
+        return Packet(leafGroups)
+    }
+
+    override fun toString(): String = serializePacketData().toHexString()
 
     /**
      * Validates this packet's fields.
@@ -76,7 +97,6 @@ class Packet(
          */
         fun create(groups: List<AssetGroup>): Packet {
             val packet = Packet(groups)
-            packet.validate()
             return packet
         }
 
@@ -92,6 +112,18 @@ class Packet(
         fun fromBytes(bytes: ByteArray): Packet {
             val input = ByteArrayInput(bytes)
             return fromBytesInput(input)
+        }
+
+        fun fromString(hex: String): Packet {
+            require(hex.isNotEmpty()) { "Missing packet data" }
+            return fromBytes(hex.hexToByteArray())
+        }
+
+        fun fromScript(script: ByteArray): Packet {
+            val extension = Extension.fromScript(script)
+            return requireNotNull(extension.getAssetPacket()) {
+                "No asset packet found in extension"
+            }
         }
 
         /**
@@ -117,7 +149,6 @@ class Packet(
             require(input.availableBytes == 0) { "Invalid packet length, left ${input.availableBytes} bytes" }
 
             val packet = Packet(groups)
-            packet.validate()
             return packet
         }
     }
