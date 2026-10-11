@@ -9,6 +9,9 @@ import fr.acinq.bitcoin.io.ByteArrayOutput
  * transfers carried by a transaction.
  *
  * @property groups The asset groups carried by this packet; must be non-empty.
+ * @constructor Checks [validate]'s packet constraints without validating individual groups.
+ * @throws IllegalArgumentException if [groups] is empty, contains duplicate non-null asset ids,
+ * or has a control asset group index outside the list.
  */
 class Packet(
     val groups: List<AssetGroup>,
@@ -21,10 +24,30 @@ class Packet(
         validate()
     }
 
+    /**
+     * Returns the complete `OP_RETURN` extension script containing this packet.
+     *
+     * @throws IllegalArgumentException if this packet or its groups fail validation during
+     * [serializePacketData].
+     */
     fun serialize(): ByteArray = extension.serialize()
 
+    /**
+     * Creates an output worth zero satoshis with the extension script returned by [serialize].
+     *
+     * @throws IllegalArgumentException if packet or group validation fails during serialization.
+     */
     fun toTxOut(): TxOut = extension.toTransactionOutput()
 
+    /**
+     * Creates a packet for a batch leaf transaction, preserving group order, asset ids, outputs,
+     * and metadata. Each group's inputs are replaced with one intent input at index zero with
+     * amount zero. The original groups are unchanged.
+     *
+     * @param intentTxId The referenced intent transaction's 32-byte id; must not be all zeros.
+     * @throws IllegalArgumentException if [intentTxId] is invalid, any group issues an asset,
+     * or the resulting groups or packet fail validation.
+     */
     fun leafTxPacket(intentTxId: ByteArray): Packet {
         val leafGroups =
             groups.map {
@@ -33,6 +56,11 @@ class Packet(
         return Packet(leafGroups)
     }
 
+    /**
+     * Returns [serializePacketData] as lowercase hexadecimal, excluding the extension wrapper.
+     *
+     * @throws IllegalArgumentException if packet or group validation fails during serialization.
+     */
     override fun toString(): String = serializePacketData().toHexString()
 
     /**
@@ -114,6 +142,12 @@ class Packet(
             return fromBytesInput(input)
         }
 
+        /**
+         * Parses the hexadecimal packet body produced by [toString], excluding the extension wrapper.
+         *
+         * @throws IllegalArgumentException if [hex] is empty or invalid hexadecimal, or the decoded
+         * bytes fail parsing or validation in [fromBytes].
+         */
         fun fromString(hex: String): Packet {
             require(hex.isNotEmpty()) { "Missing packet data" }
             val bytes =
@@ -123,6 +157,12 @@ class Packet(
             return fromBytes(bytes)
         }
 
+        /**
+         * Extracts the asset packet from a raw `OP_RETURN` extension [script].
+         *
+         * @throws IllegalArgumentException if [Extension.fromScript] rejects the script or its
+         * payload, or the parsed extension contains no asset packet.
+         */
         fun fromScript(script: ByteArray): Packet {
             val extension = Extension.fromScript(script)
             return requireNotNull(extension.getAssetPacket()) {
