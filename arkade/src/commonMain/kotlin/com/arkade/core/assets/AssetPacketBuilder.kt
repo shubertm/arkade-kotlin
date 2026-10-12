@@ -19,6 +19,7 @@ object AssetPacketBuilder {
     ): Packet? {
         val inputsByAsset: MutableMap<String, List<Pair<Int, Long>>> = mutableMapOf()
         inputs.forEach { (assetId, vIn, amount) ->
+            val assetId = assetId.lowercase()
             if (!inputsByAsset.containsKey(assetId)) {
                 inputsByAsset[assetId] = emptyList()
             }
@@ -29,14 +30,17 @@ object AssetPacketBuilder {
 
         val outputsByAsset: MutableMap<String, List<Pair<Int, Long>>> = mutableMapOf()
         outputs.forEach { (assetId, vOut, amount) ->
+            val assetId = assetId.lowercase()
             if (!outputsByAsset.containsKey(assetId)) {
                 outputsByAsset[assetId] = emptyList()
             }
             outputsByAsset[assetId] = outputsByAsset[assetId]!!.plus(Pair(vOut, amount))
         }
 
-        val allAssetIds: HashSet<String> = inputsByAsset.keys.toHashSet()
-        allAssetIds.union(outputsByAsset.keys)
+        val allAssetIds: HashSet<String> =
+            inputsByAsset.keys
+                .union(outputsByAsset.keys)
+                .toHashSet()
 
         val groups =
             allAssetIds.sorted().map { assetIdStr ->
