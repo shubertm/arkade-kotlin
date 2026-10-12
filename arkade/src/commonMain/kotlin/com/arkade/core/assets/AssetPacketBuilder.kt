@@ -64,6 +64,9 @@ object AssetPacketBuilder {
                         }
                         it.amount
                     }
+                require(totalInputs <= Satoshi.MAX_MONEY.sat) {
+                    "Total inputs amount ($totalInputs) is greater than max money (${Satoshi.MAX_MONEY.sat})"
+                }
 
                 val totalOutputs =
                     groupOutputs.sumOf {
@@ -72,9 +75,12 @@ object AssetPacketBuilder {
                         }
                         it.amount
                     }
+                require(totalOutputs <= Satoshi.MAX_MONEY.sat) {
+                    "Total outputs amount ($totalOutputs) is greater than max money (${Satoshi.MAX_MONEY.sat})"
+                }
 
                 require(totalOutputs <= totalInputs) {
-                    "Total outputs ($totalOutputs) is greater than total inputs ($totalInputs)"
+                    "Total outputs amount ($totalOutputs) is greater than total inputs amount ($totalInputs)"
                 }
 
                 if (totalInputs > totalOutputs) {
