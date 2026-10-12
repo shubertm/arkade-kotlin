@@ -57,27 +57,22 @@ object AssetPacketBuilder {
                             AssetOutput.create(vOut, amount)
                         }.toMutableList()
 
+                val maxMoneyAmount = Satoshi.MAX_MONEY.sat
                 val totalInputs =
-                    groupInputs.sumOf {
-                        require(it.amount <= Satoshi.MAX_MONEY.sat) {
-                            "Input amount is too large: ${it.amount}"
+                    groupInputs.fold(0L) { total, input ->
+                        require(input.amount <= maxMoneyAmount - total) {
+                            "Input amount is too large: ${input.amount}"
                         }
-                        it.amount
+                        total + input.amount
                     }
-                require(totalInputs <= Satoshi.MAX_MONEY.sat) {
-                    "Total inputs amount ($totalInputs) is greater than max money (${Satoshi.MAX_MONEY.sat})"
-                }
 
                 val totalOutputs =
-                    groupOutputs.sumOf {
-                        require(it.amount <= Satoshi.MAX_MONEY.sat) {
-                            "Output amount is too large: ${it.amount}"
+                    groupOutputs.fold(0L) { total, output ->
+                        require(output.amount <= maxMoneyAmount - total) {
+                            "Output amount is too large: ${output.amount}"
                         }
-                        it.amount
+                        total + output.amount
                     }
-                require(totalOutputs <= Satoshi.MAX_MONEY.sat) {
-                    "Total outputs amount ($totalOutputs) is greater than max money (${Satoshi.MAX_MONEY.sat})"
-                }
 
                 require(totalOutputs <= totalInputs) {
                     "Total outputs amount ($totalOutputs) is greater than total inputs amount ($totalInputs)"
