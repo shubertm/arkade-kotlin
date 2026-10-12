@@ -36,7 +36,7 @@ object AssetPacketBuilder {
      * @return The packet, or `null` if [inputs] is empty, without inspecting [outputs] or [changeVOut].
      * @throws IllegalArgumentException if an asset id is invalid, an amount is not positive, an
      * input or output index is out of range, or input indices or output indices repeat within an
-     * asset group; if an asset's input or output total exceeds `Satoshi.MAX_MONEY.sat`, its output
+     * asset group; if an asset's input or output total exceeds [Satoshi.MAX_MONEY], its output
      * total exceeds its input total, or a needed [changeVOut] is out of range.
      * @throws NoSuchElementException if [inputs] is nonempty and a valid output asset id has no
      * corresponding input asset.
