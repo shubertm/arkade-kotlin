@@ -1,5 +1,6 @@
 package com.arkade.core.assets
 
+import fr.acinq.bitcoin.Satoshi
 import fr.acinq.bitcoin.TxOut
 
 object AssetPacketBuilder {
@@ -51,14 +52,30 @@ object AssetPacketBuilder {
                     }
                 val groupOutputs =
                     outputsByAsset
-                        .getValue(assetIdStr)
+                        .getOrElse(assetIdStr) { emptyList() }
                         .map { (vOut, amount) ->
                             AssetOutput.create(vOut, amount)
                         }.toMutableList()
 
-                val totalInputs = groupInputs.sumOf { it.amount }
+                val totalInputs =
+                    groupInputs.sumOf {
+                        require(it.amount <= Satoshi.MAX_MONEY.sat) {
+                            "Input amount is too large: ${it.amount}"
+                        }
+                        it.amount
+                    }
 
-                val totalOutputs = groupOutputs.sumOf { it.amount }
+                val totalOutputs =
+                    groupOutputs.sumOf {
+                        require(it.amount <= Satoshi.MAX_MONEY.sat) {
+                            "Output amount is too large: ${it.amount}"
+                        }
+                        it.amount
+                    }
+
+                require(totalOutputs <= totalInputs) {
+                    "Total outputs ($totalOutputs) is greater than total inputs ($totalInputs)"
+                }
 
                 if (totalInputs > totalOutputs) {
                     val remaining = totalInputs - totalOutputs
