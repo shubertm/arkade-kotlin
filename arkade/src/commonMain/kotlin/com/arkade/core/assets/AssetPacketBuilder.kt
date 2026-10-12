@@ -4,6 +4,14 @@ import fr.acinq.bitcoin.Satoshi
 import fr.acinq.bitcoin.TxOut
 
 object AssetPacketBuilder {
+    /**
+     * Builds a zero-satoshi `OP_RETURN` output containing the asset transfer packet from [buildPacket].
+     * The tuple fields, change allocation, and validation rules are described by [buildPacket].
+     *
+     * @throws IllegalArgumentException if [inputs] is empty, or packet construction or serialization
+     * fails validation.
+     * @throws NoSuchElementException if an output asset has no corresponding input asset.
+     */
     fun build(
         inputs: Iterable<Triple<String, Int, Long>>,
         outputs: Iterable<Triple<String, Int, Long>>,
@@ -13,6 +21,26 @@ object AssetPacketBuilder {
             "Failed to build packet"
         }.toTxOut()
 
+    /**
+     * Builds a transfer packet with one group per asset, sorted by lowercase asset id.
+     * Asset ids are matched without regard to case. Each asset's surplus is added to its output
+     * at [changeVOut], or appended as a new asset output at that index if none exists.
+     *
+     * @param inputs Triples of hexadecimal [AssetId], transaction input index, and positive asset
+     * amount. Ids use the 68-digit format accepted by [AssetId.fromString]; indices are in `0..65535`.
+     * @param outputs Triples of hexadecimal [AssetId], transaction output index, and positive asset
+     * amount, with the same id format and index range as [inputs]. May be empty to send all assets
+     * to [changeVOut]. Each asset must also occur in [inputs].
+     * @param changeVOut Transaction output index receiving surplus assets; must be in `0..65535`
+     * when change is needed. It is unused when every asset's input and output totals match.
+     * @return The packet, or `null` if [inputs] is empty, without inspecting [outputs] or [changeVOut].
+     * @throws IllegalArgumentException if an asset id is invalid, an amount is not positive, an
+     * input or output index is out of range, or input indices or output indices repeat within an
+     * asset group; if an asset's input or output total exceeds [Satoshi.MAX_MONEY], its output
+     * total exceeds its input total, or a needed [changeVOut] is out of range.
+     * @throws NoSuchElementException if [inputs] is nonempty and a valid output asset id has no
+     * corresponding input asset.
+     */
     fun buildPacket(
         inputs: Iterable<Triple<String, Int, Long>>,
         outputs: Iterable<Triple<String, Int, Long>>,
