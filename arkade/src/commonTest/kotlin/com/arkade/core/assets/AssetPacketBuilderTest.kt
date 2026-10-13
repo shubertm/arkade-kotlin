@@ -144,7 +144,7 @@ class AssetPacketBuilderTest {
         val outputs =
             listOf(
                 Triple(FAKE_ASSET_ID, 0, 500L),
-                Triple(FAKE_ASSET_ID, 0, 300L),
+                Triple(FAKE_ASSET_ID, 1, 300L),
             )
         assertNull(AssetPacketBuilder.build(inputs, outputs, 0))
     }
