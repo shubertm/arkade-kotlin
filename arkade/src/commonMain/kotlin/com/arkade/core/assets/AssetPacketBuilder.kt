@@ -16,10 +16,7 @@ object AssetPacketBuilder {
         inputs: Iterable<Triple<String, Int, Long>>,
         outputs: Iterable<Triple<String, Int, Long>>,
         changeVOut: Int,
-    ): TxOut =
-        requireNotNull(buildPacket(inputs, outputs, changeVOut)) {
-            "Failed to build packet"
-        }.toTxOut()
+    ): TxOut? = buildPacket(inputs, outputs, changeVOut)?.toTxOut()
 
     /**
      * Builds a transfer packet with one group per asset, sorted by lowercase asset id.
@@ -102,9 +99,7 @@ object AssetPacketBuilder {
                         total + output.amount
                     }
 
-                require(totalOutputs <= totalInputs) {
-                    "Total outputs amount ($totalOutputs) is greater than total inputs amount ($totalInputs)"
-                }
+                require(totalOutputs <= totalInputs) { return null }
 
                 if (totalInputs > totalOutputs) {
                     val remaining = totalInputs - totalOutputs
