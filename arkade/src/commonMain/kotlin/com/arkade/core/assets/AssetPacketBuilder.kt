@@ -8,18 +8,15 @@ object AssetPacketBuilder {
      * Builds a zero-satoshi `OP_RETURN` output containing the asset transfer packet from [buildPacket].
      * The tuple fields, change allocation, and validation rules are described by [buildPacket].
      *
-     * @throws IllegalArgumentException if [inputs] is empty, or packet construction or serialization
-     * fails validation.
+     * @return `TxOut` or `null` if [inputs] is empty or asset's total output exceeds total input.
+     * @throws IllegalArgumentException if packet construction or serialization fails validation.
      * @throws NoSuchElementException if an output asset has no corresponding input asset.
      */
     fun build(
         inputs: Iterable<Triple<String, Int, Long>>,
         outputs: Iterable<Triple<String, Int, Long>>,
         changeVOut: Int,
-    ): TxOut =
-        requireNotNull(buildPacket(inputs, outputs, changeVOut)) {
-            "Failed to build packet"
-        }.toTxOut()
+    ): TxOut? = buildPacket(inputs, outputs, changeVOut)?.toTxOut()
 
     /**
      * Builds a transfer packet with one group per asset, sorted by lowercase asset id.
@@ -33,11 +30,11 @@ object AssetPacketBuilder {
      * to [changeVOut]. Each asset must also occur in [inputs].
      * @param changeVOut Transaction output index receiving surplus assets; must be in `0..65535`
      * when change is needed. It is unused when every asset's input and output totals match.
-     * @return The packet, or `null` if [inputs] is empty, without inspecting [outputs] or [changeVOut].
+     * @return The packet, or `null` if [inputs] is empty (without inspecting [outputs] or [changeVOut]),
+     * or output total exceeds input total
      * @throws IllegalArgumentException if an asset id is invalid, an amount is not positive, an
      * input or output index is out of range, or input indices or output indices repeat within an
-     * asset group; if an asset's input or output total exceeds [Satoshi.MAX_MONEY], its output
-     * total exceeds its input total, or a needed [changeVOut] is out of range.
+     * asset group, if an asset's input or output total exceeds [Satoshi.MAX_MONEY], or a needed [changeVOut] is out of range.
      * @throws NoSuchElementException if [inputs] is nonempty and a valid output asset id has no
      * corresponding input asset.
      */
@@ -102,8 +99,8 @@ object AssetPacketBuilder {
                         total + output.amount
                     }
 
-                require(totalOutputs <= totalInputs) {
-                    "Total outputs amount ($totalOutputs) is greater than total inputs amount ($totalInputs)"
+                if (totalOutputs > totalInputs) {
+                    return null
                 }
 
                 if (totalInputs > totalOutputs) {
