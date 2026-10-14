@@ -8,7 +8,7 @@ object AssetPacketBuilder {
      * Builds a zero-satoshi `OP_RETURN` output containing the asset transfer packet from [buildPacket].
      * The tuple fields, change allocation, and validation rules are described by [buildPacket].
      *
-     * @return `TxOut` or `null` if [inputs] is empty of asset's total output exceeds total input.
+     * @return `TxOut` or `null` if [inputs] is empty or asset's total output exceeds total input.
      * @throws IllegalArgumentException if packet construction or serialization fails validation.
      * @throws NoSuchElementException if an output asset has no corresponding input asset.
      */
