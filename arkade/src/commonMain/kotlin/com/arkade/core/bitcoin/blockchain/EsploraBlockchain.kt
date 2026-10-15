@@ -103,10 +103,7 @@ class EsploraBlockchain private constructor() : Blockchain {
                     blockTime = utxo.status.blockTime,
                 )
             }
-        }.getOrElse { throwable ->
-            if (throwable is CancellationException) throw throwable
-            emptyList()
-        }
+        }.getOrElse { throwable -> throw throwable }
 
     override suspend fun broadcast(tx: Transaction): Boolean =
         runCatching {
@@ -159,7 +156,7 @@ class EsploraBlockchain private constructor() : Blockchain {
             val status = response.body<TxStatus>()
             Blockchain.TxStatus(
                 status.confirmed,
-                status.blockHeight.toInt(),
+                status.blockHeight?.takeIf { status.confirmed }?.toInt(),
                 !status.confirmed,
             )
         }.getOrElse { throwable ->
@@ -236,15 +233,15 @@ class EsploraBlockchain private constructor() : Blockchain {
     private data class UtxoStatus(
         val confirmed: Boolean,
         @SerialName("block_height")
-        val blockHeight: Long,
+        val blockHeight: Long?,
         @SerialName("block_time")
-        val blockTime: Long,
+        val blockTime: Long?,
     )
 
     @Serializable
     private data class TxStatus(
         val confirmed: Boolean,
         @SerialName("block_height")
-        val blockHeight: Long,
+        val blockHeight: Long?,
     )
 }
