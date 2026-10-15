@@ -1,29 +1,30 @@
-package com.arkade.core.bitcoin
+package com.arkade.core.bitcoin.blockchain
 
 import fr.acinq.bitcoin.Transaction
 import fr.acinq.bitcoin.TxId
+import org.koin.core.component.getScopeName
 
 interface Blockchain {
     /** Returns the provider's current chain timestamp and block height. */
-    fun getChainTime(): ChainTime
+    suspend fun getChainTime(): ChainTime
 
     /** Returns the current median time past reported by the provider. */
-    fun getMedianTimePast(): Long
+    suspend fun getMedianTimePast(blockHeight: Long): Long?
 
     /** Returns the boarding outputs currently known to the provider. */
-    fun getUtxos(): List<BoardingUtxo>
+    suspend fun getUtxos(address: String): List<BoardingUtxo>
 
     /** Broadcasts [tx] and returns the provider's result. */
-    fun broadcast(tx: Transaction): Boolean
+    suspend fun broadcast(tx: Transaction): Boolean
 
     /** Broadcasts a dependent [parent] and [child] package and returns the provider's result. */
-    fun broadcastPackage(
+    suspend fun broadcastPackage(
         parent: Transaction,
         child: Transaction,
     ): Boolean
 
     /** Returns the provider's confirmation and mempool status for [txId]. */
-    fun getTxStatus(txId: TxId): TxStatus
+    suspend fun getTxStatus(txId: TxId): TxStatus
 
     /**
      * Estimates the fee rate for confirmation within [confirmTarget] blocks.
@@ -31,18 +32,21 @@ interface Blockchain {
      * @param confirmTarget The desired confirmation target in blocks.
      * @return The estimated fee rate reported by the provider.
      */
-    fun estimateFeeRate(confirmTarget: Int = 6): Float
+    suspend fun estimateFeeRate(confirmTarget: Int = 6): Float
+
+    suspend fun getRawTx(txId: TxId): Transaction? =
+        throw UnsupportedOperationException("${this.getScopeName().type.simpleName} cannot fetch raw transactions by txid.")
+
+    data class TxStatus(
+        val confirmed: Boolean,
+        val blockHeight: Int?,
+        val isInMempool: Boolean,
+    )
 }
 
 data class ChainTime(
     val time: Long,
     val height: Long,
-)
-
-data class TxStatus(
-    val confirmed: Boolean,
-    val blockHeight: Int?,
-    val isInMempool: Boolean,
 )
 
 data class BoardingUtxo(

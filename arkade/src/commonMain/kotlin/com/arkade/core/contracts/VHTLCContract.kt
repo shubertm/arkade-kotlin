@@ -1,6 +1,6 @@
 package com.arkade.core.contracts
 
-import com.arkade.core.bitcoin.Blockchain
+import com.arkade.core.bitcoin.blockchain.Blockchain
 import com.arkade.core.bitcoin.isTimeLock
 import com.arkade.core.coins.ArkCoin
 import com.arkade.core.script.CollaborativePathArkTapScript
@@ -153,7 +153,7 @@ class VHTLCContract(
 
         val refundElapsed =
             if (refundLockTime.isTimeLock()) {
-                refundLockTime <= chainTimeProvider.getMedianTimePast()
+                refundLockTime <= chainTimeProvider.getChainTime().time
             } else {
                 chainTimeProvider.getChainTime().height >= refundLockTime
             }
