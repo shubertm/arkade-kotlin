@@ -29,6 +29,7 @@ class EsploraBlockchain private constructor() : Blockchain {
         this.httpClient =
             HttpClient(CIO) {
                 defaultRequest {
+                    val baseUrl = if (baseUrl.endsWith("/")) baseUrl else "$baseUrl/"
                     url(baseUrl)
                 }
                 install(ContentNegotiation) {
@@ -45,7 +46,7 @@ class EsploraBlockchain private constructor() : Blockchain {
 
     override suspend fun getChainTime(): ChainTime =
         runCatching {
-            val tipHashResponse = httpClient.get("/blocks/tip/hash")
+            val tipHashResponse = httpClient.get("blocks/tip/hash")
             if (!tipHashResponse.status.isSuccess()) {
                 throw Exception("Failed to fetch tip hash")
             }
