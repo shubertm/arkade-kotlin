@@ -21,6 +21,7 @@ import io.ktor.serialization.kotlinx.json.json
 import io.ktor.utils.io.CancellationException
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import kotlin.math.abs
 import kotlin.math.ceil
 
@@ -33,7 +34,11 @@ class EsploraBlockchain private constructor() : Blockchain {
                     url(baseUrl)
                 }
                 install(ContentNegotiation) {
-                    json()
+                    json(
+                        Json {
+                            ignoreUnknownKeys = true
+                        },
+                    )
                 }
             }
     }
