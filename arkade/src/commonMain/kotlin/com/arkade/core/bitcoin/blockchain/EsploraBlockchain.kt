@@ -15,6 +15,7 @@ import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
+import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import io.ktor.serialization.kotlinx.json.json
@@ -92,7 +93,14 @@ class EsploraBlockchain private constructor() : Blockchain {
 
     override suspend fun getUtxos(address: String): List<BoardingUtxo> =
         runCatching {
-            val utxos = httpClient.get("address/$address/utxo").body<List<Utxo>>()
+            val response = httpClient.get("address/$address/utxo")
+
+            if (response.status == HttpStatusCode.NotFound) return@runCatching emptyList()
+            if (!response.status.isSuccess()) {
+                throw Exception("Failed to fetch utxos for address $address")
+            }
+
+            val utxos = response.body<List<Utxo>>()
             utxos.map { utxo ->
                 BoardingUtxo(
                     txId = TxId(utxo.txId),
@@ -150,8 +158,11 @@ class EsploraBlockchain private constructor() : Blockchain {
                 httpClient.get("tx/$txId/status") {
                     contentType(ContentType.Application.Json)
                 }
-            if (!response.status.isSuccess()) {
+            if (response.status == HttpStatusCode.NotFound) {
                 return@runCatching Blockchain.TxStatus(false, null, false)
+            }
+            if (!response.status.isSuccess()) {
+                throw Exception("Failed to fetch status for tx $txId")
             }
             val status = response.body<TxStatus>()
             Blockchain.TxStatus(
@@ -159,10 +170,7 @@ class EsploraBlockchain private constructor() : Blockchain {
                 status.blockHeight?.takeIf { status.confirmed }?.toInt(),
                 !status.confirmed,
             )
-        }.getOrElse { throwable ->
-            if (throwable is CancellationException) throw throwable
-            Blockchain.TxStatus(false, null, false)
-        }
+        }.getOrElse { throwable -> throw throwable }
 
     override suspend fun estimateFeeRate(confirmTarget: Int): Float =
         runCatching {
