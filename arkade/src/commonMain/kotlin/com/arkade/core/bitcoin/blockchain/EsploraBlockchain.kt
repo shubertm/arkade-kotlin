@@ -204,17 +204,16 @@ class EsploraBlockchain private constructor() : Blockchain {
     override suspend fun getRawTx(txId: TxId): Transaction? =
         runCatching {
             val response = httpClient.get("tx/$txId/hex")
-            if (!response.status.isSuccess()) return null
+            if (response.status == HttpStatusCode.NotFound) return@runCatching null
+            if (!response.status.isSuccess()) {
+                throw Exception("Failed to fetch raw transaction $txId from Esplora: ${response.status.description}")
+            }
 
             val txHex = response.bodyAsText().trim()
             val tx = Transaction.read(txHex)
-            if (tx.txid != txId) return null
+            if (tx.txid != txId) return@runCatching null
             tx
-        }.getOrElse { throwable ->
-            if (throwable is CancellationException) throw throwable
-            Log.debug(LOG_TAG, "Failed to fetch raw transaction $txId from Esplora")
-            null
-        }
+        }.getOrElse { throwable -> throw throwable }
 
     private suspend fun broadcastPackageFallback(
         parent: Transaction,
@@ -263,9 +262,9 @@ class EsploraBlockchain private constructor() : Blockchain {
     private data class UtxoStatus(
         val confirmed: Boolean,
         @SerialName("block_height")
-        val blockHeight: Long?,
+        val blockHeight: Long? = null,
         @SerialName("block_time")
-        val blockTime: Long?,
+        val blockTime: Long? = null,
     )
 
     @Serializable
