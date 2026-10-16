@@ -15,6 +15,7 @@ import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
+import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import io.ktor.serialization.kotlinx.json.json
@@ -22,6 +23,7 @@ import io.ktor.utils.io.CancellationException
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlin.math.abs
 import kotlin.math.ceil
 
@@ -133,22 +135,41 @@ class EsploraBlockchain private constructor() : Blockchain {
     override suspend fun broadcastPackage(
         parent: Transaction,
         child: Transaction,
-    ): Boolean {
-        Log.debug(LOG_TAG, "Esplora: broadcasting package as sequential txs (parent then child)")
-        val isParentSuccessful = broadcast(parent)
-        if (!isParentSuccessful) {
-            Log.warning(LOG_TAG, "Esplora package fallback: parent broadcast failed for tx ${parent.txid}")
-            return false
+    ): Boolean =
+        runCatching {
+            val response =
+                httpClient.post("txs/package") {
+                    contentType(ContentType.Application.Json)
+                    val txs =
+                        JsonArray(
+                            listOf(
+                                Json.parseToJsonElement(parent.toString()),
+                                Json.parseToJsonElement(child.toString()),
+                            ),
+                        )
+                    setBody(txs)
+                }
+
+            if (
+                response.status == HttpStatusCode.NotImplemented ||
+                response.status == HttpStatusCode.BadRequest ||
+                response.status == HttpStatusCode.MethodNotAllowed ||
+                response.status == HttpStatusCode.NotFound
+            ) {
+                return@runCatching broadcastPackageFallback(parent, child)
+            }
+
+            if (!response.status.isSuccess()) {
+                val error = response.status.description
+                Log.warning(LOG_TAG, "Esplora package broadcast failed: $error")
+                return@runCatching false
+            }
+
+            true
+        }.getOrElse { throwable ->
+            if (throwable is CancellationException) throw throwable
+            false
         }
-        val isChildSuccessful = broadcast(child)
-        if (!isChildSuccessful) {
-            Log.warning(
-                LOG_TAG,
-                "Esplora package fallback: child broadcast failed for tx ${child.txid} (parent ${parent.txid} was accepted)",
-            )
-        }
-        return true
-    }
 
     override suspend fun getTxStatus(txId: TxId): Blockchain.TxStatus =
         runCatching {
@@ -210,6 +231,28 @@ class EsploraBlockchain private constructor() : Blockchain {
             Log.debug(LOG_TAG, "Failed to fetch raw transaction $txId from Esplora")
             null
         }
+
+    private suspend fun broadcastPackageFallback(
+        parent: Transaction,
+        child: Transaction,
+    ): Boolean {
+        Log.debug(LOG_TAG, "Esplora: broadcasting package as sequential txs (parent then child)")
+        val isParentSuccessful = broadcast(parent)
+        if (!isParentSuccessful) {
+            Log.warning(LOG_TAG, "Esplora package fallback: parent broadcast failed for tx ${parent.txid}")
+            return false
+        }
+        val isChildSuccessful = broadcast(child)
+        if (!isChildSuccessful) {
+            // Child can be rejected when parent fee was enough on its own, this is still a valid outcome
+            // We still return true
+            Log.warning(
+                LOG_TAG,
+                "Esplora package fallback: child broadcast failed for tx ${child.txid} (parent ${parent.txid} was accepted)",
+            )
+        }
+        return true
+    }
 
     companion object {
         private const val LOG_TAG = "Esplora"
