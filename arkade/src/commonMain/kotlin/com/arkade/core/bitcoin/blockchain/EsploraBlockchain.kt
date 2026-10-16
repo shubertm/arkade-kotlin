@@ -24,6 +24,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonPrimitive
 import kotlin.math.abs
 import kotlin.math.ceil
 
@@ -143,8 +144,8 @@ class EsploraBlockchain private constructor() : Blockchain {
                     val txs =
                         JsonArray(
                             listOf(
-                                Json.parseToJsonElement(parent.toString()),
-                                Json.parseToJsonElement(child.toString()),
+                                JsonPrimitive(parent.toString()),
+                                JsonPrimitive(child.toString()),
                             ),
                         )
                     setBody(txs)
@@ -288,6 +289,6 @@ class EsploraBlockchain private constructor() : Blockchain {
     private data class TxStatus(
         val confirmed: Boolean,
         @SerialName("block_height")
-        val blockHeight: Long?,
+        val blockHeight: Long? = null,
     )
 }
