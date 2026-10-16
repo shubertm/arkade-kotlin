@@ -25,7 +25,6 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonPrimitive
-import kotlin.math.abs
 import kotlin.math.ceil
 
 class EsploraBlockchain private constructor() : Blockchain {
@@ -207,10 +206,9 @@ class EsploraBlockchain private constructor() : Blockchain {
                     .map {
                         it.key.toInt() to it.value
                     }.filter {
-                        it.second < Int.MAX_VALUE
-                    }.minBy {
-                        abs(it.first - confirmTarget)
-                    }
+                        it.first <= confirmTarget && it.second < Int.MAX_VALUE
+                    }.maxByOrNull { it.first } ?: return@runCatching 2f
+
             if (closest.second > 0) ceil(closest.second) else 2f
         }.getOrElse { throwable ->
             if (throwable is CancellationException) throw throwable
