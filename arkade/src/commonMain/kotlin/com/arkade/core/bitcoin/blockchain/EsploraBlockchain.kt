@@ -15,7 +15,6 @@ import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
-import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import io.ktor.serialization.kotlinx.json.json
@@ -95,7 +94,6 @@ class EsploraBlockchain private constructor() : Blockchain {
         runCatching {
             val response = httpClient.get("address/$address/utxo")
 
-            if (response.status == HttpStatusCode.NotFound) return@runCatching emptyList()
             if (!response.status.isSuccess()) {
                 throw Exception("Failed to fetch utxos for address $address")
             }
@@ -158,9 +156,6 @@ class EsploraBlockchain private constructor() : Blockchain {
                 httpClient.get("tx/$txId/status") {
                     contentType(ContentType.Application.Json)
                 }
-            if (response.status == HttpStatusCode.NotFound) {
-                return@runCatching Blockchain.TxStatus(false, null, false)
-            }
             if (!response.status.isSuccess()) {
                 throw Exception("Failed to fetch status for tx $txId")
             }
