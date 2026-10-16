@@ -151,11 +151,12 @@ class VHTLCContract(
 
         val chainTimeProvider = requireNotNull(chainTimeProvider) { "Missing chain time provider" }
 
+        val chainTime = chainTimeProvider.getChainTime()
         val refundElapsed =
             if (refundLockTime.isTimeLock()) {
-                refundLockTime <= chainTimeProvider.getChainTime().time
+                refundLockTime < chainTime.time
             } else {
-                chainTimeProvider.getChainTime().height >= refundLockTime
+                chainTime.height >= refundLockTime
             }
 
         if (refundElapsed) {
