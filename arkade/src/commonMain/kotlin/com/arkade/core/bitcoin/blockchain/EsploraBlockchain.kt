@@ -1,5 +1,7 @@
 package com.arkade.core.bitcoin.blockchain
 
+import com.arkade.network.http.getHttpClient
+import com.arkade.network.http.httpClient
 import com.arkade.utils.Log
 import com.arkade.utils.debug
 import com.arkade.utils.warning
@@ -7,9 +9,6 @@ import fr.acinq.bitcoin.Transaction
 import fr.acinq.bitcoin.TxId
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
-import io.ktor.client.engine.cio.CIO
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -18,7 +17,6 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
-import io.ktor.serialization.kotlinx.json.json
 import io.ktor.utils.io.CancellationException
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -29,20 +27,7 @@ import kotlin.math.ceil
 
 class EsploraBlockchain private constructor() : Blockchain {
     constructor(baseUrl: String) : this() {
-        this.httpClient =
-            HttpClient(CIO) {
-                defaultRequest {
-                    val baseUrl = if (baseUrl.endsWith("/")) baseUrl else "$baseUrl/"
-                    url(baseUrl)
-                }
-                install(ContentNegotiation) {
-                    json(
-                        Json {
-                            ignoreUnknownKeys = true
-                        },
-                    )
-                }
-            }
+        this.httpClient = getHttpClient(baseUrl)
     }
 
     constructor(httpClient: HttpClient) : this() {
