@@ -1,7 +1,6 @@
 package com.arkade.core.bitcoin.blockchain
 
 import com.arkade.network.http.getHttpClient
-import com.arkade.network.http.httpClient
 import com.arkade.utils.Log
 import com.arkade.utils.debug
 import com.arkade.utils.warning
@@ -20,7 +19,6 @@ import io.ktor.http.isSuccess
 import io.ktor.utils.io.CancellationException
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonPrimitive
 import kotlin.math.ceil
