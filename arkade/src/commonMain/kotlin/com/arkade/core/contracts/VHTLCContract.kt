@@ -116,8 +116,8 @@ class VHTLCContract(
      *
      * When a preimage is available, the returned coin uses the receiver descriptor, claim path,
      * and preimage witness. Otherwise, this uses [chainTimeProvider] to select the sender-only
-     * refund path once [refundLockTime] has passed: timestamp locks require the current chain time
-     * to be strictly later, while height locks allow the matching height.
+     * refund path once [refundLockTime] has passed: timestamp locks require the provider's chain time
+     * (median time past for Esplora) to be strictly later, while height locks allow the matching height.
      *
      * @throws IllegalArgumentException If a chain-time provider is required but has not been set.
      * @throws UnsupportedOperationException If no preimage is available and the refund lock has
