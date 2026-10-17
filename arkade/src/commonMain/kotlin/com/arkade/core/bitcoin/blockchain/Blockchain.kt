@@ -85,6 +85,6 @@ data class BoardingUtxo(
     val vOut: Int,
     val amount: Long,
     val confirmed: Boolean,
-    val blockHeight: Long?,
-    val blockTime: Long?,
+    val blockHeight: Long? = null,
+    val blockTime: Long? = null,
 )
