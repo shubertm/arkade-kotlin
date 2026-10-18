@@ -154,8 +154,8 @@ class NBXplorerBlockchain private constructor() : Blockchain {
     /**
      * Returns confirmed and unconfirmed outputs for [address], with values in satoshis.
      *
-     * Excludes outpoints marked spent in either section of the response. Block height and timestamp
-     * remain `null`, including for confirmed outputs. Unsuccessful HTTP responses, missing sections
+     * Exclude outpoints marked spent in either section of the response.
+     * Unsuccessful HTTP responses, missing sections
      * or spent-outpoint lists, and outputs missing a transaction hash, index, or value throw.
      */
     override suspend fun getUtxos(address: String): List<BoardingUtxo> {
@@ -167,6 +167,7 @@ class NBXplorerBlockchain private constructor() : Blockchain {
             throw Exception("Failed to get utxos: ${response.status}")
         }
         val result = Json.parseToJsonElement(response.bodyAsText()).jsonObject
+        val currentHeight = result["currentHeight"]?.jsonPrimitive?.long ?: throw Exception("Failed to parse utxos")
         val confirmed = result["confirmed"]?.jsonObject
         val unConfirmed = result["unconfirmed"]?.jsonObject
 
@@ -181,8 +182,8 @@ class NBXplorerBlockchain private constructor() : Blockchain {
 
         val spentOutpoints = confirmedSpentOutpoints.plus(unConfirmedSpentOutpoints)
 
-        val confirmedUtxos = parseUtxosFromJson(confirmed, true)
-        val unConfirmedUtxos = parseUtxosFromJson(unConfirmed, false)
+        val confirmedUtxos = parseUtxosFromJson(confirmed, currentHeight, true)
+        val unConfirmedUtxos = parseUtxosFromJson(unConfirmed, currentHeight, false)
 
         val utxos = confirmedUtxos.plus(unConfirmedUtxos)
 
@@ -329,7 +330,7 @@ class NBXplorerBlockchain private constructor() : Blockchain {
     /**
      * Calls `getrawtransaction` for [txId] and decodes the returned transaction hex.
      * Returns `null` for HTTP 404 or an absent RPC result; other unsuccessful HTTP responses,
-     * malformed results, and invalid transaction hex throw. The decoded transaction ID is not
+     * malformed results, and invalid transaction hex throw. The decoded transaction ID is
      * checked against [txId].
      */
     override suspend fun getRawTx(txId: TxId): Transaction? {
@@ -411,21 +412,27 @@ class NBXplorerBlockchain private constructor() : Blockchain {
 
     /**
      * Parses the `utxOs` list from a confirmed or unconfirmed response section.
-     * Requires each output's transaction hash, index, and value; leaves block metadata unset.
+     * Requires each output's transaction hash, index, and value.
      */
     private fun parseUtxosFromJson(
         utxosJson: JsonObject,
+        currentHeight: Long,
         confirmed: Boolean,
     ): List<BoardingUtxo> =
         utxosJson["utxOs"]?.jsonArray?.map { utxo ->
             val txId = utxo.jsonObject["transactionHash"]?.jsonPrimitive?.content ?: throw Exception("Failed to parse utxos: missing txId")
             val index = utxo.jsonObject["index"]?.jsonPrimitive?.int ?: throw Exception("Failed to parse utxos: missing tx output index")
             val value = utxo.jsonObject["value"]?.jsonPrimitive?.long ?: throw Exception("Failed to parse utxos: missing tx output value")
+            val confirmations = utxo.jsonObject["confirmations"]?.jsonPrimitive?.long ?: 0
+            val blockHeight = if (confirmations > 0) currentHeight - (confirmations + 1) else null
+            val blockTime = if (confirmations > 0) utxo.jsonObject["timestamp"]?.jsonPrimitive?.long else null
             BoardingUtxo(
                 TxId(txId),
                 index,
                 value,
                 confirmed,
+                blockHeight,
+                blockTime,
             )
         } ?: throw Exception("Failed to parse utxos")
 
