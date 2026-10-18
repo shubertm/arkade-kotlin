@@ -217,7 +217,7 @@ class NBXplorerBlockchain private constructor() : Blockchain {
         }
 
         val responseBody = Json.parseToJsonElement(response.bodyAsText()).jsonObject
-        val result = responseBody["result"]?.jsonObject
+        val result = responseBody["result"] as? JsonObject
         val packageMsg = result?.get("package_msg")?.jsonPrimitive?.content
         val error = responseBody["error"]
 
