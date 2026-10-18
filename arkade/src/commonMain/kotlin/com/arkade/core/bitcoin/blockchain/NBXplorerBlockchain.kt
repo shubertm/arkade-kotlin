@@ -424,7 +424,7 @@ class NBXplorerBlockchain private constructor() : Blockchain {
             val index = utxo.jsonObject["index"]?.jsonPrimitive?.int ?: throw Exception("Failed to parse utxos: missing tx output index")
             val value = utxo.jsonObject["value"]?.jsonPrimitive?.long ?: throw Exception("Failed to parse utxos: missing tx output value")
             val confirmations = utxo.jsonObject["confirmations"]?.jsonPrimitive?.long ?: 0
-            val blockHeight = if (confirmations > 0) currentHeight - (confirmations + 1) else null
+            val blockHeight = if (confirmations > 0) (currentHeight - confirmations) + 1 else null
             val blockTime = if (confirmations > 0) utxo.jsonObject["timestamp"]?.jsonPrimitive?.long else null
             BoardingUtxo(
                 TxId(txId),
