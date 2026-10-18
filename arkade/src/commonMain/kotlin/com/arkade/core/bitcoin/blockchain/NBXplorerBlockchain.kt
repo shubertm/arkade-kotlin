@@ -106,49 +106,16 @@ class NBXplorerBlockchain private constructor() : Blockchain {
      * Unsuccessful HTTP responses and malformed results throw.
      */
     override suspend fun getMedianTimePast(blockHeight: Long): Long? {
-        val response =
-            httpClient.post("/v1/cryptos/BTC/rpc") {
-                contentType(ContentType.Application.Json)
-                setBody(
-                    JSONRPCPayload(
-                        method = "getblockhash",
-                        params = listOf(JsonPrimitive(blockHeight)),
-                    ),
-                )
-            }
+        val block = rpcGetBlockHeader(blockHeight)
 
-        if (!response.status.isSuccess()) {
-            throw Exception("Failed to get block hash: ${response.status}")
-        }
-
-        val blockHash =
-            Json.parseToJsonElement(response.bodyAsText()).jsonObject["result"]?.jsonPrimitive
-                ?: return null
-
-        val blockResponse =
-            httpClient.post("/v1/cryptos/BTC/rpc") {
-                contentType(ContentType.Application.Json)
-                setBody(
-                    JSONRPCPayload(
-                        method = "getblockheader",
-                        params = listOf(blockHash, JsonPrimitive(true)),
-                    ),
-                )
-            }
-
-        if (!blockResponse.status.isSuccess()) {
-            throw Exception("Failed to get block header: ${blockResponse.status}")
-        }
-
-        val block = Json.parseToJsonElement(blockResponse.bodyAsText()).jsonObject["result"]
-        val time =
+        val medianTime =
             block
                 ?.jsonObject
                 ?.get("mediantime")
                 ?.jsonPrimitive
                 ?.long
 
-        return time
+        return medianTime
     }
 
     /**
@@ -410,11 +377,49 @@ class NBXplorerBlockchain private constructor() : Blockchain {
         return true
     }
 
+    private suspend fun rpcGetBlockHeader(height: Long): JsonElement? {
+        val response =
+            httpClient.post("/v1/cryptos/BTC/rpc") {
+                contentType(ContentType.Application.Json)
+                setBody(
+                    JSONRPCPayload(
+                        method = "getblockhash",
+                        params = listOf(JsonPrimitive(height)),
+                    ),
+                )
+            }
+
+        if (!response.status.isSuccess()) {
+            throw Exception("Failed to get block hash: ${response.status}")
+        }
+
+        val blockHash =
+            Json.parseToJsonElement(response.bodyAsText()).jsonObject["result"]?.jsonPrimitive
+                ?: return null
+
+        val blockResponse =
+            httpClient.post("/v1/cryptos/BTC/rpc") {
+                contentType(ContentType.Application.Json)
+                setBody(
+                    JSONRPCPayload(
+                        method = "getblockheader",
+                        params = listOf(blockHash, JsonPrimitive(true)),
+                    ),
+                )
+            }
+
+        if (!blockResponse.status.isSuccess()) {
+            throw Exception("Failed to get block header: ${blockResponse.status}")
+        }
+
+        return Json.parseToJsonElement(blockResponse.bodyAsText()).jsonObject["result"]
+    }
+
     /**
      * Parses the `utxOs` list from a confirmed or unconfirmed response section.
      * Requires each output's transaction hash, index, and value.
      */
-    private fun parseUtxosFromJson(
+    private suspend fun parseUtxosFromJson(
         utxosJson: JsonObject,
         currentHeight: Long,
         confirmed: Boolean,
@@ -425,7 +430,14 @@ class NBXplorerBlockchain private constructor() : Blockchain {
             val value = utxo.jsonObject["value"]?.jsonPrimitive?.long ?: throw Exception("Failed to parse utxos: missing tx output value")
             val confirmations = utxo.jsonObject["confirmations"]?.jsonPrimitive?.long ?: 0
             val blockHeight = if (confirmations > 0) (currentHeight - confirmations) + 1 else null
-            val blockTime = if (confirmations > 0) utxo.jsonObject["timestamp"]?.jsonPrimitive?.long else null
+            val blockTime =
+                if (blockHeight != null) {
+                    val block = rpcGetBlockHeader(blockHeight)
+                    block?.jsonObject["time"]?.jsonPrimitive?.long
+                } else {
+                    null
+                }
+
             BoardingUtxo(
                 TxId(txId),
                 index,
