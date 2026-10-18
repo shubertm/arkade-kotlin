@@ -18,6 +18,8 @@ import io.ktor.http.isSuccess
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.boolean
@@ -186,8 +188,12 @@ class NBXplorerBlockchain private constructor() : Blockchain {
                         method = "submitpackage",
                         params =
                             listOf(
-                                JsonPrimitive(parent.toString()),
-                                JsonPrimitive(child.toString()),
+                                JsonArray(
+                                    listOf(
+                                        JsonPrimitive(parent.toString()),
+                                        JsonPrimitive(child.toString()),
+                                    ),
+                                ),
                                 JsonPrimitive(0),
                                 JsonPrimitive(21_000_000),
                             ),
@@ -343,7 +349,7 @@ class NBXplorerBlockchain private constructor() : Blockchain {
         @SerialName("jsonrpc")
         val jsonRPC: String = "1.0",
         val method: String,
-        val params: List<JsonPrimitive>,
+        val params: List<JsonElement>,
     )
 
     @Serializable
