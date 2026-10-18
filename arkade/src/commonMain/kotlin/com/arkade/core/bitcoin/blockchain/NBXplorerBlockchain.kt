@@ -18,6 +18,7 @@ import io.ktor.http.isSuccess
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.float
@@ -140,26 +141,8 @@ class NBXplorerBlockchain private constructor() : Blockchain {
 
         val spentOutpoints = confirmedSpentOutpoints.plus(unConfirmedSpentOutpoints)
 
-        val confirmedUtxos =
-            confirmed["utxOs"]?.jsonArray?.map { utxo ->
-                BoardingUtxo(
-                    TxId(utxo.jsonObject["transactionHash"]?.jsonPrimitive?.content ?: ""),
-                    utxo.jsonObject["index"]?.jsonPrimitive?.int ?: 0,
-                    utxo.jsonObject["value"]?.jsonPrimitive?.long ?: 0L,
-                    true,
-                )
-            }
-        val unConfirmedUtxos =
-            unConfirmed["utxOs"]?.jsonArray?.map { utxo ->
-                BoardingUtxo(
-                    TxId(utxo.jsonObject["transactionHash"]?.jsonPrimitive?.content ?: ""),
-                    utxo.jsonObject["index"]?.jsonPrimitive?.int ?: 0,
-                    utxo.jsonObject["value"]?.jsonPrimitive?.long ?: 0L,
-                    false,
-                )
-            }
-
-        if (confirmedUtxos == null || unConfirmedUtxos == null) throw Exception("Failed to parse utxos")
+        val confirmedUtxos = parseUtxosFromJson(confirmed, true)
+        val unConfirmedUtxos = parseUtxosFromJson(unConfirmed, false)
 
         val utxos = confirmedUtxos.plus(unConfirmedUtxos)
 
@@ -319,6 +302,22 @@ class NBXplorerBlockchain private constructor() : Blockchain {
         }
         return true
     }
+
+    private fun parseUtxosFromJson(
+        utxosJson: JsonObject,
+        confirmed: Boolean,
+    ): List<BoardingUtxo> =
+        utxosJson["utxOs"]?.jsonArray?.map { utxo ->
+            val txId = utxo.jsonObject["transactionHash"]?.jsonPrimitive?.content ?: throw Exception("Failed to parse utxos: missing txId")
+            val index = utxo.jsonObject["index"]?.jsonPrimitive?.int ?: throw Exception("Failed to parse utxos: missing tx output index")
+            val value = utxo.jsonObject["value"]?.jsonPrimitive?.long ?: throw Exception("Failed to parse utxos: missing tx output value")
+            BoardingUtxo(
+                TxId(txId),
+                index,
+                value,
+                confirmed,
+            )
+        } ?: throw Exception("Failed to parse utxos")
 
     companion object {
         private const val LOG_TAG = "NBXplorer"
