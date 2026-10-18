@@ -357,7 +357,11 @@ class NBXplorerBlockchain private constructor() : Blockchain {
                 ?.jsonPrimitive
                 ?.content ?: return null
 
-        return Transaction.read(hex)
+        val tx = Transaction.read(hex)
+
+        if (tx.txid != txId) return null
+
+        return tx
     }
 
     /**
