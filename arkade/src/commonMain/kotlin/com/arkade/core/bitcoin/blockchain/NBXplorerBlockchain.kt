@@ -255,7 +255,7 @@ class NBXplorerBlockchain private constructor() : Blockchain {
 
     override suspend fun getRawTx(txId: TxId): Transaction? {
         val response =
-            httpClient.get("/v1/cryptos/BTC/rpc") {
+            httpClient.post("/v1/cryptos/BTC/rpc") {
                 contentType(ContentType.Application.Json)
                 setBody(
                     JSONRPCPayload(
@@ -271,8 +271,12 @@ class NBXplorerBlockchain private constructor() : Blockchain {
             throw Exception("Failed to get raw transaction: ${response.status}")
         }
 
-        val result = Json.parseToJsonElement(response.bodyAsText()).jsonObject
-        val hex = result["hex"]?.jsonPrimitive?.content ?: return null
+        val hex =
+            Json
+                .parseToJsonElement(response.bodyAsText())
+                .jsonObject["result"]
+                ?.jsonPrimitive
+                ?.content ?: return null
 
         return Transaction.read(hex)
     }
