@@ -208,6 +208,17 @@ class NBXplorerBlockchain private constructor() : Blockchain {
             Log.warning(LOG_TAG, "submitpackage failed: ${response.status.description}")
             return false
         }
+
+        val responseBody = Json.parseToJsonElement(response.bodyAsText()).jsonObject
+        val result = responseBody["result"]?.jsonObject
+        val packageMsg = result?.get("package_msg")?.jsonPrimitive?.content
+        val error = responseBody["error"]
+
+        if (error != null || packageMsg != "success") {
+            Log.warning(LOG_TAG, "Transaction package was rejected")
+            return false
+        }
+
         return true
     }
 
