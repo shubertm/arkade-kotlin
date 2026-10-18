@@ -32,17 +32,42 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
 import kotlin.math.ceil
 
+/**
+ * Bitcoin blockchain provider backed by NBXplorer's Bitcoin HTTP API and JSON-RPC proxy.
+ *
+ * Requests use absolute paths under `/v1/cryptos/BTC`, replacing any path prefix in the base URL.
+ * The server must expose the RPC methods used by this provider. Transport and decoding failures
+ * propagate to the caller; individual operations document HTTP errors and fallback results.
+ */
 class NBXplorerBlockchain private constructor() : Blockchain {
+    /**
+     * Creates a provider using an existing [httpClient], which this provider does not close.
+     *
+     * Configure the NBXplorer server URL, any required authentication, and JSON content negotiation
+     * for request serialization. To preserve status-based fallbacks, configure the client to return
+     * non-success responses without throwing (Ktor's default `expectSuccess = false`).
+     */
     constructor(httpClient: HttpClient) : this() {
         this.httpClient = httpClient
     }
 
+    /**
+     * Creates a provider using [getHttpClient] for the NBXplorer server at [baseUrl].
+     *
+     * Use the [HttpClient] constructor when custom authentication or client configuration is needed.
+     *
+     * @throws NotImplementedError On native platforms, where the HTTP client factory is not implemented.
+     */
     constructor(baseUrl: String) : this() {
         httpClient = getHttpClient(baseUrl)
     }
 
     private lateinit var httpClient: HttpClient
 
+    /**
+     * Calls `getblockchaininfo` and returns its `time` in Unix seconds and `blocks` as the tip height.
+     * Throws if the HTTP response is unsuccessful or either required result field is missing.
+     */
     override suspend fun getChainTime(): ChainTime {
         val response =
             httpClient.post("/v1/cryptos/BTC/rpc") {
@@ -75,6 +100,11 @@ class NBXplorerBlockchain private constructor() : Blockchain {
         return ChainTime(time, height)
     }
 
+    /**
+     * Resolves [blockHeight] with `getblockhash`, then requests a verbose `getblockheader` result.
+     * Returns `mediantime` in Unix seconds, or `null` when the hash result or median time is absent.
+     * Unsuccessful HTTP responses and malformed results throw.
+     */
     override suspend fun getMedianTimePast(blockHeight: Long): Long? {
         val response =
             httpClient.post("/v1/cryptos/BTC/rpc") {
@@ -121,6 +151,13 @@ class NBXplorerBlockchain private constructor() : Blockchain {
         return time
     }
 
+    /**
+     * Returns confirmed and unconfirmed outputs for [address], with values in satoshis.
+     *
+     * Excludes outpoints marked spent in either section of the response. Block height and timestamp
+     * remain `null`, including for confirmed outputs. Unsuccessful HTTP responses, missing sections
+     * or spent-outpoint lists, and outputs missing a transaction hash, index, or value throw.
+     */
     override suspend fun getUtxos(address: String): List<BoardingUtxo> {
         val response =
             httpClient.get("/v1/cryptos/BTC/addresses/$address/utxos") {
@@ -156,6 +193,11 @@ class NBXplorerBlockchain private constructor() : Blockchain {
         }
     }
 
+    /**
+     * Posts [tx] as a JSON object containing its hex to NBXplorer's transactions endpoint.
+     * Returns the response's `success` flag, or `false` when that flag is absent.
+     * An unsuccessful HTTP response throws.
+     */
     override suspend fun broadcast(tx: Transaction): Boolean {
         val response =
             httpClient.post("/v1/cryptos/BTC/transactions") {
@@ -177,6 +219,18 @@ class NBXplorerBlockchain private constructor() : Blockchain {
         return isSuccessful
     }
 
+    /**
+     * Submits [parent] followed by [child] through `submitpackage`, with fee-rate and burn limits
+     * set to `0` and `21_000_000`, respectively.
+     *
+     * HTTP 400, 404, 405, or 501 triggers sequential broadcasting via `sendrawtransaction` for the
+     * parent and [broadcast] for the child. That fallback returns `false` if the parent's HTTP status
+     * is unsuccessful; otherwise it returns `true` even if the child returns `false`. Exceptions
+     * from either request still propagate.
+     *
+     * Other unsuccessful HTTP responses return `false`. A successful HTTP response returns `true`
+     * only when the RPC error is absent or JSON null and the result's `package_msg` is `success`.
+     */
     override suspend fun broadcastPackage(
         parent: Transaction,
         child: Transaction,
@@ -229,6 +283,13 @@ class NBXplorerBlockchain private constructor() : Blockchain {
         return true
     }
 
+    /**
+     * Fetches [txId] and treats a positive confirmation count as confirmed.
+     *
+     * A missing confirmation count defaults to zero; a nonpositive count is treated as being in
+     * the mempool. The response's height is retained when present, regardless of confirmation count.
+     * Unsuccessful HTTP responses throw, including HTTP 404 for an unknown transaction.
+     */
     override suspend fun getTxStatus(txId: TxId): Blockchain.TxStatus {
         val response =
             httpClient.get("/v1/cryptos/BTC/transactions/$txId") {
@@ -246,6 +307,11 @@ class NBXplorerBlockchain private constructor() : Blockchain {
         return Blockchain.TxStatus(confirmations > 0, height, confirmations <= 0L)
     }
 
+    /**
+     * Fetches NBXplorer's fee rate in satoshis per virtual byte for [confirmTarget] blocks and
+     * rounds it up. Uses `2f` when the `feeRate` field is absent.
+     * Unsuccessful HTTP responses and malformed fee rates throw.
+     */
     override suspend fun estimateFeeRate(confirmTarget: Int): Float {
         val response =
             httpClient.get("/v1/cryptos/BTC/fees/$confirmTarget") {
@@ -260,6 +326,12 @@ class NBXplorerBlockchain private constructor() : Blockchain {
         return ceil(feeRate)
     }
 
+    /**
+     * Calls `getrawtransaction` for [txId] and decodes the returned transaction hex.
+     * Returns `null` for HTTP 404 or an absent RPC result; other unsuccessful HTTP responses,
+     * malformed results, and invalid transaction hex throw. The decoded transaction ID is not
+     * checked against [txId].
+     */
     override suspend fun getRawTx(txId: TxId): Transaction? {
         val response =
             httpClient.post("/v1/cryptos/BTC/rpc") {
@@ -288,6 +360,10 @@ class NBXplorerBlockchain private constructor() : Blockchain {
         return Transaction.read(hex)
     }
 
+    /**
+     * Broadcasts the parent via RPC, then the child via [broadcast]. A successful parent HTTP status
+     * counts as success even if the child returns `false`; exceptions still propagate.
+     */
     private suspend fun broadcastPackageFallback(
         parent: Transaction,
         child: Transaction,
@@ -301,6 +377,10 @@ class NBXplorerBlockchain private constructor() : Blockchain {
         return true
     }
 
+    /**
+     * Calls `sendrawtransaction` for [tx] with fee-rate and burn limits of `0` and `21_000_000`.
+     * Returns whether the HTTP status is successful without checking the RPC response body.
+     */
     private suspend fun rpcBroadcast(tx: Transaction): Boolean {
         val response =
             httpClient.post("/v1/cryptos/BTC/rpc") {
@@ -325,6 +405,10 @@ class NBXplorerBlockchain private constructor() : Blockchain {
         return true
     }
 
+    /**
+     * Parses the `utxOs` list from a confirmed or unconfirmed response section.
+     * Requires each output's transaction hash, index, and value; leaves block metadata unset.
+     */
     private fun parseUtxosFromJson(
         utxosJson: JsonObject,
         confirmed: Boolean,
