@@ -20,6 +20,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.boolean
@@ -220,7 +221,7 @@ class NBXplorerBlockchain private constructor() : Blockchain {
         val packageMsg = result?.get("package_msg")?.jsonPrimitive?.content
         val error = responseBody["error"]
 
-        if (error != null || packageMsg != "success") {
+        if ((error != null && error != JsonNull) || packageMsg != "success") {
             Log.warning(LOG_TAG, "Transaction package was rejected")
             return false
         }
