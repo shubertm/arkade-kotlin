@@ -16,6 +16,11 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import io.ktor.utils.io.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -429,7 +434,7 @@ class NBXplorerBlockchain private constructor() : Blockchain {
         currentHeight: Long,
         confirmed: Boolean,
     ): List<BoardingUtxo> {
-        val blockTimeByHeight = mutableMapOf<Long, Long?>()
+        val blockTimeByHeight = utxoBlockTimeByHeight(utxosJson, currentHeight)
 
         return utxosJson["utxOs"]?.jsonArray?.map { utxo ->
             val txId =
@@ -443,23 +448,7 @@ class NBXplorerBlockchain private constructor() : Blockchain {
                     ?: throw Exception("Failed to parse utxos: missing tx output value")
             val confirmations = utxo.jsonObject["confirmations"]?.jsonPrimitive?.long ?: 0
             val blockHeight = if (confirmations > 0) (currentHeight - confirmations) + 1 else null
-            val blockTime =
-                if (blockHeight != null) {
-                    if (blockTimeByHeight.containsKey(blockHeight)) {
-                        blockTimeByHeight[blockHeight]
-                    } else {
-                        val block =
-                            runCatching { rpcGetBlockHeader(blockHeight) }.getOrElse { throwable ->
-                                if (throwable is CancellationException) throw throwable
-                                null
-                            }
-                        val time = block?.jsonObject["time"]?.jsonPrimitive?.long
-                        blockTimeByHeight[blockHeight] = time
-                        time
-                    }
-                } else {
-                    null
-                }
+            val blockTime = if (blockHeight != null) blockTimeByHeight[blockHeight] else null
 
             BoardingUtxo(
                 TxId(txId),
@@ -470,6 +459,35 @@ class NBXplorerBlockchain private constructor() : Blockchain {
                 blockTime,
             )
         } ?: throw Exception("Failed to parse utxos")
+    }
+
+    private suspend fun utxoBlockTimeByHeight(
+        utxoJson: JsonObject,
+        currentHeight: Long,
+    ): Map<Long, Long?> {
+        val uniqueBlockHeights = mutableSetOf<Long>()
+        utxoJson["utxOs"]?.jsonArray?.forEach { utxo ->
+            val confirmations = utxo.jsonObject["confirmations"]?.jsonPrimitive?.long ?: return@forEach
+            val blockHeight = if (confirmations > 0) (currentHeight - confirmations) + 1 else return@forEach
+            uniqueBlockHeights.add(blockHeight)
+        }
+
+        return withContext(Dispatchers.IO) {
+            uniqueBlockHeights
+                .map { height ->
+                    async {
+                        val block = rpcGetBlockHeader(height)
+                        val time =
+                            block
+                                ?.jsonObject
+                                ?.get("time")
+                                ?.jsonPrimitive
+                                ?.long
+                        height to time
+                    }
+                }.awaitAll()
+                .toMap()
+        }
     }
 
     companion object {
