@@ -15,6 +15,7 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
+import io.ktor.utils.io.CancellationException
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -106,7 +107,11 @@ class NBXplorerBlockchain private constructor() : Blockchain {
      * Unsuccessful HTTP responses and malformed results throw.
      */
     override suspend fun getMedianTimePast(blockHeight: Long): Long? {
-        val block = rpcGetBlockHeader(blockHeight)
+        val block =
+            runCatching { rpcGetBlockHeader(blockHeight) }.getOrElse { throwable ->
+                if (throwable is CancellationException) throw throwable
+                null
+            }
 
         val medianTime =
             block
@@ -443,7 +448,11 @@ class NBXplorerBlockchain private constructor() : Blockchain {
                     if (blockTimeByHeight.containsKey(blockHeight)) {
                         blockTimeByHeight[blockHeight]
                     } else {
-                        val block = rpcGetBlockHeader(blockHeight)
+                        val block =
+                            runCatching { rpcGetBlockHeader(blockHeight) }.getOrElse { throwable ->
+                                if (throwable is CancellationException) throw throwable
+                                null
+                            }
                         val time = block?.jsonObject["time"]?.jsonPrimitive?.long
                         blockTimeByHeight[blockHeight] = time
                         time
