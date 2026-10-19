@@ -112,8 +112,8 @@ class NBXplorerBlockchain private constructor() : Blockchain {
 
     /**
      * Resolves [blockHeight] with `getblockhash`, then requests a verbose `getblockheader` result.
-     * Returns `mediantime` in Unix seconds, or `null` when the hash result or median time is absent.
-     * Unsuccessful HTTP responses and malformed results throw.
+     * Returns `mediantime` in Unix seconds, or `null` when the lookup fails or hash result or median time is absent.
+     * CancellationException is rethrown.
      */
     override suspend fun getMedianTimePast(blockHeight: Long): Long? {
         val medianTime =
