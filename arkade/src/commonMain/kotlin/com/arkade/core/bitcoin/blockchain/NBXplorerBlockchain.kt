@@ -348,6 +348,7 @@ class NBXplorerBlockchain private constructor() : Blockchain {
             Json
                 .parseToJsonElement(response.bodyAsText())
                 .jsonObject["result"]
+                ?.takeUnless { it == JsonNull }
                 ?.jsonPrimitive
                 ?.content ?: return null
 
@@ -425,7 +426,11 @@ class NBXplorerBlockchain private constructor() : Blockchain {
         }
 
         val blockHash =
-            Json.parseToJsonElement(response.bodyAsText()).jsonObject["result"]?.jsonPrimitive
+            Json
+                .parseToJsonElement(response.bodyAsText())
+                .jsonObject["result"]
+                ?.takeUnless { it == JsonNull }
+                ?.jsonPrimitive
                 ?: return null
 
         val blockResponse =
