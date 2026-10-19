@@ -45,7 +45,8 @@ import kotlin.math.ceil
  *
  * Requests use absolute paths under `/v1/cryptos/BTC`, replacing any path prefix in the base URL.
  * The server must expose the RPC methods used by this provider. Transport and decoding failures
- * propagate to the caller; individual operations document HTTP errors and fallback results.
+ * propagate unless an operation documents a fallback; block metadata lookups return `null` on
+ * failure while preserving coroutine cancellation.
  */
 class NBXplorerBlockchain private constructor() : Blockchain {
     /**
@@ -112,8 +113,9 @@ class NBXplorerBlockchain private constructor() : Blockchain {
 
     /**
      * Resolves [blockHeight] with `getblockhash`, then requests a verbose `getblockheader` result.
-     * Returns `mediantime` in Unix seconds, or `null` when the lookup fails or hash result or median time is absent.
-     * CancellationException is rethrown.
+     * Returns `mediantime` in Unix seconds, or `null` when the hash result or median time is absent
+     * or the lookup fails, including HTTP, transport, and decoding failures.
+     * [CancellationException] is rethrown.
      */
     override suspend fun getMedianTimePast(blockHeight: Long): Long? {
         val medianTime =
@@ -134,9 +136,20 @@ class NBXplorerBlockchain private constructor() : Blockchain {
     /**
      * Returns confirmed and unconfirmed outputs for [address], with values in satoshis.
      *
-     * Exclude outpoints marked spent in either section of the response.
-     * Unsuccessful HTTP responses, missing sections
-     * or spent-outpoint lists, and outputs missing a transaction hash, index, or value throw.
+     * Excludes outpoints marked spent in either section of the response. The response's
+     * `currentHeight` is required. For positive `confirmations`, the block height is inferred as
+     * `currentHeight - confirmations + 1`; missing or nonpositive counts leave block height and
+     * timestamp `null`. The output's confirmed flag comes from its response section.
+     *
+     * Block timestamps use the header's `time` in Unix seconds, rather than `mediantime`. Headers
+     * are fetched once per distinct height within each response section, with at most 10 UTXO
+     * block-header lookups running concurrently per provider instance. Results are not cached
+     * between calls. Failed lookups or missing timestamps leave the timestamp `null` while
+     * retaining the inferred height; [CancellationException] is rethrown.
+     *
+     * Unsuccessful UTXO HTTP responses, missing current height, sections, `utxOs` lists or
+     * spent-outpoint lists, and outputs missing a transaction hash, index, or value throw.
+     * Malformed UTXO response data also throws.
      */
     override suspend fun getUtxos(address: String): List<BoardingUtxo> {
         val response =
@@ -309,9 +322,9 @@ class NBXplorerBlockchain private constructor() : Blockchain {
 
     /**
      * Calls `getrawtransaction` for [txId] and decodes the returned transaction hex.
-     * Returns `null` for HTTP 404 or an absent RPC result; other unsuccessful HTTP responses,
-     * malformed results, and invalid transaction hex throw. The decoded transaction ID is
-     * checked against [txId].
+     * Returns `null` for HTTP 404, an absent RPC result, or a decoded transaction whose ID differs
+     * from [txId]. Other unsuccessful HTTP responses, malformed results, and invalid transaction
+     * hex throw.
      */
     override suspend fun getRawTx(txId: TxId): Transaction? {
         val response =
@@ -390,6 +403,11 @@ class NBXplorerBlockchain private constructor() : Blockchain {
         return true
     }
 
+    /**
+     * Resolves [height] with `getblockhash`, then returns the verbose `getblockheader` result.
+     * Returns `null` when either RPC result is absent. Unsuccessful HTTP responses, transport
+     * failures, and malformed responses throw; callers handle metadata fallbacks and cancellation.
+     */
     private suspend fun rpcGetBlockHeader(height: Long): JsonElement? {
         val response =
             httpClient.post("/v1/cryptos/BTC/rpc") {
@@ -430,7 +448,9 @@ class NBXplorerBlockchain private constructor() : Blockchain {
 
     /**
      * Parses the `utxOs` list from a confirmed or unconfirmed response section.
-     * Requires each output's transaction hash, index, and value.
+     * Requires each output's transaction hash, index, and value. Uses [currentHeight] and positive
+     * confirmation counts to infer block heights, and prefetches timestamps before mapping outputs.
+     * [confirmed] sets the output flag independently of its confirmation count.
      */
     private suspend fun parseUtxosFromJson(
         utxosJson: JsonObject,
@@ -464,6 +484,13 @@ class NBXplorerBlockchain private constructor() : Blockchain {
         } ?: throw Exception("Failed to parse utxos")
     }
 
+    /**
+     * Fetches header `time` values in Unix seconds for distinct heights inferred from positive
+     * confirmation counts in one response section. Runs on [Dispatchers.IO], sharing the instance's
+     * limit of 10 concurrent UTXO block-header lookups. The returned map is local to this invocation.
+     * Failed lookups or absent times map to `null`; [CancellationException] is rethrown.
+     * Malformed UTXO data encountered while collecting heights throws.
+     */
     private suspend fun utxoBlockTimeByHeight(
         utxoJson: JsonObject,
         currentHeight: Long,
