@@ -116,18 +116,17 @@ class NBXplorerBlockchain private constructor() : Blockchain {
      * Unsuccessful HTTP responses and malformed results throw.
      */
     override suspend fun getMedianTimePast(blockHeight: Long): Long? {
-        val block =
-            runCatching { rpcGetBlockHeader(blockHeight) }.getOrElse { throwable ->
+        val medianTime =
+            runCatching {
+                rpcGetBlockHeader(blockHeight)
+                    ?.jsonObject
+                    ?.get("mediantime")
+                    ?.jsonPrimitive
+                    ?.long
+            }.getOrElse { throwable ->
                 if (throwable is CancellationException) throw throwable
                 null
             }
-
-        val medianTime =
-            block
-                ?.jsonObject
-                ?.get("mediantime")
-                ?.jsonPrimitive
-                ?.long
 
         return medianTime
     }
@@ -481,17 +480,17 @@ class NBXplorerBlockchain private constructor() : Blockchain {
                 .map { height ->
                     async {
                         rpcRequestSemaphore.withPermit {
-                            val block =
-                                runCatching { rpcGetBlockHeader(height) }.getOrElse { throwable ->
+                            val time =
+                                runCatching {
+                                    rpcGetBlockHeader(height)
+                                        ?.jsonObject
+                                        ?.get("time")
+                                        ?.jsonPrimitive
+                                        ?.long
+                                }.getOrElse { throwable ->
                                     if (throwable is CancellationException) throw throwable
                                     null
                                 }
-                            val time =
-                                block
-                                    ?.jsonObject
-                                    ?.get("time")
-                                    ?.jsonPrimitive
-                                    ?.long
                             height to time
                         }
                     }
