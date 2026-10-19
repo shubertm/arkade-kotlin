@@ -20,6 +20,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -69,6 +71,8 @@ class NBXplorerBlockchain private constructor() : Blockchain {
     }
 
     private lateinit var httpClient: HttpClient
+
+    private val rpcRequestSemaphore = Semaphore(10)
 
     /**
      * Calls `getblockchaininfo` and returns its `time` in Unix seconds and `blocks` as the tip height.
@@ -476,18 +480,20 @@ class NBXplorerBlockchain private constructor() : Blockchain {
             uniqueBlockHeights
                 .map { height ->
                     async {
-                        val block =
-                            runCatching { rpcGetBlockHeader(height) }.getOrElse { throwable ->
-                                if (throwable is CancellationException) throw throwable
-                                null
-                            }
-                        val time =
-                            block
-                                ?.jsonObject
-                                ?.get("time")
-                                ?.jsonPrimitive
-                                ?.long
-                        height to time
+                        rpcRequestSemaphore.withPermit {
+                            val block =
+                                runCatching { rpcGetBlockHeader(height) }.getOrElse { throwable ->
+                                    if (throwable is CancellationException) throw throwable
+                                    null
+                                }
+                            val time =
+                                block
+                                    ?.jsonObject
+                                    ?.get("time")
+                                    ?.jsonPrimitive
+                                    ?.long
+                            height to time
+                        }
                     }
                 }.awaitAll()
                 .toMap()
