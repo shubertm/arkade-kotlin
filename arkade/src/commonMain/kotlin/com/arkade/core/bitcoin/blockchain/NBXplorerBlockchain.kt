@@ -423,17 +423,31 @@ class NBXplorerBlockchain private constructor() : Blockchain {
         utxosJson: JsonObject,
         currentHeight: Long,
         confirmed: Boolean,
-    ): List<BoardingUtxo> =
-        utxosJson["utxOs"]?.jsonArray?.map { utxo ->
-            val txId = utxo.jsonObject["transactionHash"]?.jsonPrimitive?.content ?: throw Exception("Failed to parse utxos: missing txId")
-            val index = utxo.jsonObject["index"]?.jsonPrimitive?.int ?: throw Exception("Failed to parse utxos: missing tx output index")
-            val value = utxo.jsonObject["value"]?.jsonPrimitive?.long ?: throw Exception("Failed to parse utxos: missing tx output value")
+    ): List<BoardingUtxo> {
+        val blockTimeByHeight = mutableMapOf<Long, Long?>()
+
+        return utxosJson["utxOs"]?.jsonArray?.map { utxo ->
+            val txId =
+                utxo.jsonObject["transactionHash"]?.jsonPrimitive?.content
+                    ?: throw Exception("Failed to parse utxos: missing txId")
+            val index =
+                utxo.jsonObject["index"]?.jsonPrimitive?.int
+                    ?: throw Exception("Failed to parse utxos: missing tx output index")
+            val value =
+                utxo.jsonObject["value"]?.jsonPrimitive?.long
+                    ?: throw Exception("Failed to parse utxos: missing tx output value")
             val confirmations = utxo.jsonObject["confirmations"]?.jsonPrimitive?.long ?: 0
             val blockHeight = if (confirmations > 0) (currentHeight - confirmations) + 1 else null
             val blockTime =
                 if (blockHeight != null) {
-                    val block = rpcGetBlockHeader(blockHeight)
-                    block?.jsonObject["time"]?.jsonPrimitive?.long
+                    if (blockTimeByHeight.containsKey(blockHeight)) {
+                        blockTimeByHeight[blockHeight]
+                    } else {
+                        val block = rpcGetBlockHeader(blockHeight)
+                        val time = block?.jsonObject["time"]?.jsonPrimitive?.long
+                        blockTimeByHeight[blockHeight] = time
+                        time
+                    }
                 } else {
                     null
                 }
@@ -447,6 +461,7 @@ class NBXplorerBlockchain private constructor() : Blockchain {
                 blockTime,
             )
         } ?: throw Exception("Failed to parse utxos")
+    }
 
     companion object {
         private const val LOG_TAG = "NBXplorer"
