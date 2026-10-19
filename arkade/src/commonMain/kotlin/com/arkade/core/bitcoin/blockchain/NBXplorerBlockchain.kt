@@ -476,7 +476,11 @@ class NBXplorerBlockchain private constructor() : Blockchain {
             uniqueBlockHeights
                 .map { height ->
                     async {
-                        val block = rpcGetBlockHeader(height)
+                        val block =
+                            runCatching { rpcGetBlockHeader(height) }.getOrElse { throwable ->
+                                if (throwable is CancellationException) throw throwable
+                                null
+                            }
                         val time =
                             block
                                 ?.jsonObject
