@@ -15,6 +15,14 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
+import io.ktor.utils.io.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -64,6 +72,8 @@ class NBXplorerBlockchain private constructor() : Blockchain {
 
     private lateinit var httpClient: HttpClient
 
+    private val rpcRequestSemaphore = Semaphore(10)
+
     /**
      * Calls `getblockchaininfo` and returns its `time` in Unix seconds and `blocks` as the tip height.
      * Throws if the HTTP response is unsuccessful or either required result field is missing.
@@ -102,60 +112,30 @@ class NBXplorerBlockchain private constructor() : Blockchain {
 
     /**
      * Resolves [blockHeight] with `getblockhash`, then requests a verbose `getblockheader` result.
-     * Returns `mediantime` in Unix seconds, or `null` when the hash result or median time is absent.
-     * Unsuccessful HTTP responses and malformed results throw.
+     * Returns `mediantime` in Unix seconds, or `null` when the lookup fails or hash result or median time is absent.
+     * CancellationException is rethrown.
      */
     override suspend fun getMedianTimePast(blockHeight: Long): Long? {
-        val response =
-            httpClient.post("/v1/cryptos/BTC/rpc") {
-                contentType(ContentType.Application.Json)
-                setBody(
-                    JSONRPCPayload(
-                        method = "getblockhash",
-                        params = listOf(JsonPrimitive(blockHeight)),
-                    ),
-                )
+        val medianTime =
+            runCatching {
+                rpcGetBlockHeader(blockHeight)
+                    ?.jsonObject
+                    ?.get("mediantime")
+                    ?.jsonPrimitive
+                    ?.long
+            }.getOrElse { throwable ->
+                if (throwable is CancellationException) throw throwable
+                null
             }
 
-        if (!response.status.isSuccess()) {
-            throw Exception("Failed to get block hash: ${response.status}")
-        }
-
-        val blockHash =
-            Json.parseToJsonElement(response.bodyAsText()).jsonObject["result"]?.jsonPrimitive
-                ?: return null
-
-        val blockResponse =
-            httpClient.post("/v1/cryptos/BTC/rpc") {
-                contentType(ContentType.Application.Json)
-                setBody(
-                    JSONRPCPayload(
-                        method = "getblockheader",
-                        params = listOf(blockHash, JsonPrimitive(true)),
-                    ),
-                )
-            }
-
-        if (!blockResponse.status.isSuccess()) {
-            throw Exception("Failed to get block header: ${blockResponse.status}")
-        }
-
-        val block = Json.parseToJsonElement(blockResponse.bodyAsText()).jsonObject["result"]
-        val time =
-            block
-                ?.jsonObject
-                ?.get("mediantime")
-                ?.jsonPrimitive
-                ?.long
-
-        return time
+        return medianTime
     }
 
     /**
      * Returns confirmed and unconfirmed outputs for [address], with values in satoshis.
      *
-     * Excludes outpoints marked spent in either section of the response. Block height and timestamp
-     * remain `null`, including for confirmed outputs. Unsuccessful HTTP responses, missing sections
+     * Exclude outpoints marked spent in either section of the response.
+     * Unsuccessful HTTP responses, missing sections
      * or spent-outpoint lists, and outputs missing a transaction hash, index, or value throw.
      */
     override suspend fun getUtxos(address: String): List<BoardingUtxo> {
@@ -167,6 +147,7 @@ class NBXplorerBlockchain private constructor() : Blockchain {
             throw Exception("Failed to get utxos: ${response.status}")
         }
         val result = Json.parseToJsonElement(response.bodyAsText()).jsonObject
+        val currentHeight = result["currentHeight"]?.jsonPrimitive?.long ?: throw Exception("Failed to parse utxos")
         val confirmed = result["confirmed"]?.jsonObject
         val unConfirmed = result["unconfirmed"]?.jsonObject
 
@@ -181,8 +162,8 @@ class NBXplorerBlockchain private constructor() : Blockchain {
 
         val spentOutpoints = confirmedSpentOutpoints.plus(unConfirmedSpentOutpoints)
 
-        val confirmedUtxos = parseUtxosFromJson(confirmed, true)
-        val unConfirmedUtxos = parseUtxosFromJson(unConfirmed, false)
+        val confirmedUtxos = parseUtxosFromJson(confirmed, currentHeight, true)
+        val unConfirmedUtxos = parseUtxosFromJson(unConfirmed, currentHeight, false)
 
         val utxos = confirmedUtxos.plus(unConfirmedUtxos)
 
@@ -329,7 +310,7 @@ class NBXplorerBlockchain private constructor() : Blockchain {
     /**
      * Calls `getrawtransaction` for [txId] and decodes the returned transaction hex.
      * Returns `null` for HTTP 404 or an absent RPC result; other unsuccessful HTTP responses,
-     * malformed results, and invalid transaction hex throw. The decoded transaction ID is not
+     * malformed results, and invalid transaction hex throw. The decoded transaction ID is
      * checked against [txId].
      */
     override suspend fun getRawTx(txId: TxId): Transaction? {
@@ -357,7 +338,11 @@ class NBXplorerBlockchain private constructor() : Blockchain {
                 ?.jsonPrimitive
                 ?.content ?: return null
 
-        return Transaction.read(hex)
+        val tx = Transaction.read(hex)
+
+        if (tx.txid != txId) return null
+
+        return tx
     }
 
     /**
@@ -405,25 +390,114 @@ class NBXplorerBlockchain private constructor() : Blockchain {
         return true
     }
 
+    private suspend fun rpcGetBlockHeader(height: Long): JsonElement? {
+        val response =
+            httpClient.post("/v1/cryptos/BTC/rpc") {
+                contentType(ContentType.Application.Json)
+                setBody(
+                    JSONRPCPayload(
+                        method = "getblockhash",
+                        params = listOf(JsonPrimitive(height)),
+                    ),
+                )
+            }
+
+        if (!response.status.isSuccess()) {
+            throw Exception("Failed to get block hash: ${response.status}")
+        }
+
+        val blockHash =
+            Json.parseToJsonElement(response.bodyAsText()).jsonObject["result"]?.jsonPrimitive
+                ?: return null
+
+        val blockResponse =
+            httpClient.post("/v1/cryptos/BTC/rpc") {
+                contentType(ContentType.Application.Json)
+                setBody(
+                    JSONRPCPayload(
+                        method = "getblockheader",
+                        params = listOf(blockHash, JsonPrimitive(true)),
+                    ),
+                )
+            }
+
+        if (!blockResponse.status.isSuccess()) {
+            throw Exception("Failed to get block header: ${blockResponse.status}")
+        }
+
+        return Json.parseToJsonElement(blockResponse.bodyAsText()).jsonObject["result"]
+    }
+
     /**
      * Parses the `utxOs` list from a confirmed or unconfirmed response section.
-     * Requires each output's transaction hash, index, and value; leaves block metadata unset.
+     * Requires each output's transaction hash, index, and value.
      */
-    private fun parseUtxosFromJson(
+    private suspend fun parseUtxosFromJson(
         utxosJson: JsonObject,
+        currentHeight: Long,
         confirmed: Boolean,
-    ): List<BoardingUtxo> =
-        utxosJson["utxOs"]?.jsonArray?.map { utxo ->
-            val txId = utxo.jsonObject["transactionHash"]?.jsonPrimitive?.content ?: throw Exception("Failed to parse utxos: missing txId")
-            val index = utxo.jsonObject["index"]?.jsonPrimitive?.int ?: throw Exception("Failed to parse utxos: missing tx output index")
-            val value = utxo.jsonObject["value"]?.jsonPrimitive?.long ?: throw Exception("Failed to parse utxos: missing tx output value")
+    ): List<BoardingUtxo> {
+        val blockTimeByHeight = utxoBlockTimeByHeight(utxosJson, currentHeight)
+
+        return utxosJson["utxOs"]?.jsonArray?.map { utxo ->
+            val txId =
+                utxo.jsonObject["transactionHash"]?.jsonPrimitive?.content
+                    ?: throw Exception("Failed to parse utxos: missing txId")
+            val index =
+                utxo.jsonObject["index"]?.jsonPrimitive?.int
+                    ?: throw Exception("Failed to parse utxos: missing tx output index")
+            val value =
+                utxo.jsonObject["value"]?.jsonPrimitive?.long
+                    ?: throw Exception("Failed to parse utxos: missing tx output value")
+            val confirmations = utxo.jsonObject["confirmations"]?.jsonPrimitive?.long ?: 0
+            val blockHeight = if (confirmations > 0) (currentHeight - confirmations) + 1 else null
+            val blockTime = if (blockHeight != null) blockTimeByHeight[blockHeight] else null
+
             BoardingUtxo(
                 TxId(txId),
                 index,
                 value,
                 confirmed,
+                blockHeight,
+                blockTime,
             )
         } ?: throw Exception("Failed to parse utxos")
+    }
+
+    private suspend fun utxoBlockTimeByHeight(
+        utxoJson: JsonObject,
+        currentHeight: Long,
+    ): Map<Long, Long?> {
+        val uniqueBlockHeights = mutableSetOf<Long>()
+        utxoJson["utxOs"]?.jsonArray?.forEach { utxo ->
+            val confirmations = utxo.jsonObject["confirmations"]?.jsonPrimitive?.long ?: return@forEach
+            val blockHeight = if (confirmations > 0) (currentHeight - confirmations) + 1 else return@forEach
+            uniqueBlockHeights.add(blockHeight)
+        }
+
+        return withContext(Dispatchers.IO) {
+            uniqueBlockHeights
+                .map { height ->
+                    async {
+                        rpcRequestSemaphore.withPermit {
+                            val time =
+                                runCatching {
+                                    rpcGetBlockHeader(height)
+                                        ?.jsonObject
+                                        ?.get("time")
+                                        ?.jsonPrimitive
+                                        ?.long
+                                }.getOrElse { throwable ->
+                                    if (throwable is CancellationException) throw throwable
+                                    null
+                                }
+                            height to time
+                        }
+                    }
+                }.awaitAll()
+                .toMap()
+        }
+    }
 
     companion object {
         private const val LOG_TAG = "NBXplorer"
