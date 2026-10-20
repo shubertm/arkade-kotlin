@@ -448,7 +448,9 @@ class NBXplorerBlockchain private constructor() : Blockchain {
             throw Exception("Failed to get block header: ${blockResponse.status}")
         }
 
-        return Json.parseToJsonElement(blockResponse.bodyAsText()).jsonObject["result"]
+        return Json.parseToJsonElement(blockResponse.bodyAsText()).jsonObject["result"]?.takeUnless {
+            it == JsonNull
+        }
     }
 
     /**
