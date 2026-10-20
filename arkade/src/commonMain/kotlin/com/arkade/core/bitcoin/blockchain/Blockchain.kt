@@ -73,8 +73,9 @@ data class ChainTime(
 /**
  * An unspent Bitcoin output with optional confirmation metadata.
  *
- * Block height and timestamp default to `null` when omitted, even for confirmed outputs from
- * providers such as [NBXplorerBlockchain] that do not populate this metadata.
+ * Block height and timestamp default to `null` when omitted. [NBXplorerBlockchain] infers the
+ * height from positive confirmation counts and fetches the block header's timestamp when available;
+ * a failed timestamp lookup can leave the height populated while the timestamp remains `null`.
  *
  * @property txId Transaction containing the output.
  * @property vOut Zero-based output index within the transaction.
