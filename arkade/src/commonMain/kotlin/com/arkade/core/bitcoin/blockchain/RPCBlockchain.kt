@@ -40,15 +40,14 @@ class RPCBlockchain private constructor() : Blockchain {
     override suspend fun getChainTime(): ChainTime {
         val response = httpClient.sendRpc<JsonElement>(method = "getblockchaininfo")
 
-        val result = response?.jsonObject["result"]
         val time =
-            result
+            response
                 ?.jsonObject
                 ?.get("time")
                 ?.jsonPrimitive
                 ?.long
         val height =
-            result
+            response
                 ?.jsonObject
                 ?.get("blocks")
                 ?.jsonPrimitive
