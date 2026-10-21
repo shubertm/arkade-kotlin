@@ -61,10 +61,12 @@ class RPCBlockchain private constructor() : Blockchain {
         return ChainTime(time, height)
     }
 
-    override suspend fun getMedianTimePast(blockHeight: Long): Long? {
-        val blockTime = blockTime(blockHeight)
-        return blockTime.medianTime
-    }
+    override suspend fun getMedianTimePast(blockHeight: Long): Long? =
+        try {
+            blockTime(blockHeight).medianTime
+        } catch (_: RpcException) {
+            null
+        }
 
     override suspend fun getUtxos(address: String): List<BoardingUtxo> =
         throw UnsupportedOperationException(
