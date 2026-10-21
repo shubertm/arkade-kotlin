@@ -9,7 +9,7 @@ import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import kotlinx.serialization.json.JsonArray
 
-suspend fun <T> HttpClient.sendRpc(
+suspend inline fun <reified T> HttpClient.sendRpc(
     method: String,
     params: JsonArray = JsonArray(emptyList()),
 ): T? {
