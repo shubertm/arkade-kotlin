@@ -97,10 +97,16 @@ class RPCBlockchain private constructor() : Blockchain {
                         JsonPrimitive(child.toString()),
                     ),
                 )
-            httpClient.sendRpc<String>(
-                "submitpackage",
-                JsonArray(listOf(txs)),
-            )
+            val response =
+                httpClient.sendRpc<JsonElement>(
+                    "submitpackage",
+                    JsonArray(listOf(txs)),
+                )
+            val packageMsg = response?.jsonObject["package_msg"]?.jsonPrimitive?.content
+            if (packageMsg != null && packageMsg != "success") {
+                Log.warning(LOG_TAG, "Transaction package was rejected")
+                return false
+            }
             true
         } catch (e: CancellationException) {
             throw e
