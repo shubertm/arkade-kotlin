@@ -19,9 +19,16 @@ suspend fun <T> HttpClient.sendRpc(
             val requestBody = RpcRequest(method = method, params = params)
             setBody(requestBody)
         }
-    if (!response.status.isSuccess()) throw Exception("RPC failed: ${response.status}")
 
     val rpcResponse: RpcResponse<T> = response.body()
+
+    if (!response.status.isSuccess()) {
+        throw if (rpcResponse.error != null) {
+            RpcException("${rpcResponse.error}")
+        } else {
+            Exception("RPC failed: ${response.status}")
+        }
+    }
 
     if (rpcResponse.error != null) throw RpcException("${rpcResponse.error}")
 
