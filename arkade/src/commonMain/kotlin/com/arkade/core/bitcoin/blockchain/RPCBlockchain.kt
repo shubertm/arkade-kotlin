@@ -90,14 +90,16 @@ class RPCBlockchain private constructor() : Blockchain {
         child: Transaction,
     ): Boolean =
         try {
-            httpClient.sendRpc<String>(
-                "submitpackage",
+            val txs =
                 JsonArray(
                     listOf(
                         JsonPrimitive(parent.toString()),
                         JsonPrimitive(child.toString()),
                     ),
-                ),
+                )
+            httpClient.sendRpc<String>(
+                "submitpackage",
+                JsonArray(listOf(txs)),
             )
             true
         } catch (e: CancellationException) {
