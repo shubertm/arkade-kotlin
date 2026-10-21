@@ -152,8 +152,8 @@ class RPCBlockchain private constructor() : Blockchain {
                         ),
                     ),
                 )
-            val feeRate = response?.jsonObject["feerate"]?.jsonPrimitive?.float ?: 2f
-            ceil(feeRate)
+            val feeRate = response?.jsonObject["feerate"]?.jsonPrimitive?.float
+            if (feeRate != null) ceil(feeRate * 100_000) else 2f
         } catch (e: Exception) {
             Log.warning(LOG_TAG, "estimatesmartfee failed, using fallback")
             2f
