@@ -11,6 +11,7 @@ import fr.acinq.bitcoin.ByteVector32
 import fr.acinq.bitcoin.Transaction
 import fr.acinq.bitcoin.TxId
 import io.ktor.client.HttpClient
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.JsonArray
@@ -77,6 +78,8 @@ class RPCBlockchain private constructor() : Blockchain {
                 JsonArray(listOf(JsonPrimitive(tx.toString()))),
             )
             true
+        } catch (e: CancellationException) {
+            throw e
         } catch (_: Exception) {
             Log.warning(LOG_TAG, "RPC broadcast failed for tx: ${tx.txid}")
             false
@@ -97,6 +100,8 @@ class RPCBlockchain private constructor() : Blockchain {
                 ),
             )
             true
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: RpcException) {
             Log.warning(LOG_TAG, "submitpackage failed: ${e.message}")
             broadcastPackageFallback(parent, child)
@@ -136,6 +141,8 @@ class RPCBlockchain private constructor() : Blockchain {
                 blockHeight = blockHeader?.jsonObject["height"]?.jsonPrimitive?.intOrNull
             }
             Blockchain.TxStatus(true, blockHeight, false)
+        } catch (e: CancellationException) {
+            throw e
         } catch (_: RpcException) {
             Blockchain.TxStatus(false, null, false)
         }
@@ -154,7 +161,9 @@ class RPCBlockchain private constructor() : Blockchain {
                 )
             val feeRate = response?.jsonObject["feerate"]?.jsonPrimitive?.float
             if (feeRate != null) ceil(feeRate * 100_000) else 2f
-        } catch (e: Exception) {
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
             Log.warning(LOG_TAG, "estimatesmartfee failed, using fallback")
             2f
         }
@@ -176,6 +185,8 @@ class RPCBlockchain private constructor() : Blockchain {
             val tx = Transaction.read(txHex)
             if (tx.txid != txId) return null
             tx
+        } catch (e: CancellationException) {
+            throw e
         } catch (_: Exception) {
             Log.debug(LOG_TAG, "Failed to fetch raw transaction $txId over RPC")
             null
