@@ -67,7 +67,7 @@ class RPCBlockchain private constructor() : Blockchain {
 
     override suspend fun getUtxos(address: String): List<BoardingUtxo> =
         throw UnsupportedOperationException(
-            "Bitcoin Core RPC has no native address-indexed UTXO API.vUse NBXplorerBlockchain or EsploraBlockchain when boarding-UTXO discovery is required.",
+            "Bitcoin Core RPC has no native address-indexed UTXO API. Use NBXplorerBlockchain or EsploraBlockchain when boarding-UTXO discovery is required.",
         )
 
     override suspend fun broadcast(tx: Transaction): Boolean =
@@ -114,6 +114,7 @@ class RPCBlockchain private constructor() : Blockchain {
                     JsonArray(
                         listOf(
                             JsonPrimitive(txId.toString()),
+                            JsonPrimitive(true),
                         ),
                     ),
                 )
