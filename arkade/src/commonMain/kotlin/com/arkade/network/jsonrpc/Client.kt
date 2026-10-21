@@ -20,15 +20,16 @@ suspend inline fun <reified T> HttpClient.sendRpc(
             setBody(requestBody)
         }
 
-    val rpcResponse: RpcResponse<T> = response.body()
-
     if (!response.status.isSuccess()) {
-        throw if (rpcResponse.error != null) {
-            RpcException("${rpcResponse.error}")
+        val rpcError: RpcError? = runCatching { response.body<RpcResponse<T>>().error }.getOrNull()
+        throw if (rpcError != null) {
+            RpcException("$rpcError")
         } else {
             Exception("RPC failed: ${response.status}")
         }
     }
+
+    val rpcResponse: RpcResponse<T> = response.body()
 
     if (rpcResponse.error != null) throw RpcException("${rpcResponse.error}")
 
