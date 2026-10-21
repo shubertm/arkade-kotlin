@@ -171,8 +171,8 @@ class RPCBlockchain private constructor() : Blockchain {
             if (feeRate != null) ceil(feeRate * 100_000) else 2f
         } catch (e: CancellationException) {
             throw e
-        } catch (_: Exception) {
-            Log.warning(LOG_TAG, "estimatesmartfee failed, using fallback")
+        } catch (e: Exception) {
+            Log.warning(LOG_TAG, "estimatesmartfee failed, using fallback: ${e.message}")
             2f
         }
 
