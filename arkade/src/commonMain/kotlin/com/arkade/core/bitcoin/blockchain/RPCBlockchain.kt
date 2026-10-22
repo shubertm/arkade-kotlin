@@ -25,10 +25,20 @@ import kotlinx.serialization.json.long
 import kotlin.math.ceil
 
 class RPCBlockchain private constructor() : Blockchain {
+    /**
+     * Creates a provider using [httpClient], configured with the RPC endpoint and JSON content
+     * negotiation. The provider does not close the client.
+     */
     constructor(httpClient: HttpClient) : this() {
         this.httpClient = httpClient
     }
 
+    /**
+     * Creates a provider using [getHttpClient] for the RPC endpoint at [baseUrl].
+     * A trailing slash is added when absent.
+     *
+     * @throws NotImplementedError On native platforms, where HTTP client creation is not implemented.
+     */
     constructor(baseUrl: String) : this() {
         httpClient = getHttpClient(baseUrl)
     }
@@ -38,6 +48,12 @@ class RPCBlockchain private constructor() : Blockchain {
     private val blockTimeByBlockHash: MutableMap<ByteVector32, BlockTime> = mutableMapOf()
     private val mutex = Mutex()
 
+    /**
+     * Returns the chain tip's block timestamp in Unix seconds and height from Bitcoin Core.
+     * RPC, HTTP, transport, and decoding failures propagate, including coroutine cancellation.
+     *
+     * @throws Exception If the response omits the timestamp or height.
+     */
     override suspend fun getChainTime(): ChainTime {
         val response = httpClient.sendRpc<JsonElement>(method = "getblockchaininfo")
 
@@ -61,6 +77,13 @@ class RPCBlockchain private constructor() : Blockchain {
         return ChainTime(time, height)
     }
 
+    /**
+     * Returns median time past at [blockHeight] in Unix seconds, or `null` if the block header
+     * lacks its timestamp or median time, or an RPC error occurs. Other HTTP, transport, and
+     * decoding failures propagate, including coroutine cancellation.
+     *
+     * @throws Exception If the block hash or header result is missing.
+     */
     override suspend fun getMedianTimePast(blockHeight: Long): Long? =
         try {
             blockTime(blockHeight).medianTime
@@ -68,11 +91,19 @@ class RPCBlockchain private constructor() : Blockchain {
             null
         }
 
+    /**
+     * @throws UnsupportedOperationException Always, because Bitcoin Core RPC does not support
+     * address-indexed UTXO discovery. Use [NBXplorerBlockchain] or [EsploraBlockchain] instead.
+     */
     override suspend fun getUtxos(address: String): List<BoardingUtxo> =
         throw UnsupportedOperationException(
             "Bitcoin Core RPC has no native address-indexed UTXO API. Use NBXplorerBlockchain or EsploraBlockchain when boarding-UTXO discovery is required.",
         )
 
+    /**
+     * Submits [tx] and returns `true` if the RPC call completes without error, even with a null result.
+     * RPC, HTTP, transport, and decoding failures return `false`; coroutine cancellation propagates.
+     */
     override suspend fun broadcast(tx: Transaction): Boolean =
         try {
             httpClient.sendRpc<String>(
@@ -87,6 +118,14 @@ class RPCBlockchain private constructor() : Blockchain {
             false
         }
 
+    /**
+     * Submits a dependent [parent] and [child] package. Returns `true` when `package_msg` is
+     * `success` or absent, including a null result; any other message returns `false`.
+     *
+     * RPC, HTTP, transport, or decoding failures trigger sequential broadcasting, parent first.
+     * The fallback returns `true` if the parent broadcast succeeds, even if the child fails.
+     * Coroutine cancellation propagates.
+     */
     override suspend fun broadcastPackage(
         parent: Transaction,
         child: Transaction,
@@ -121,6 +160,14 @@ class RPCBlockchain private constructor() : Blockchain {
             broadcastPackageFallback(parent, child)
         }
 
+    /**
+     * Returns confirmation status for [txId], looking up its block height when confirmed.
+     * Missing or nonpositive confirmations are treated as unconfirmed and in the mempool;
+     * a confirmed transaction's height may be `null` when unavailable.
+     *
+     * An RPC error from either lookup returns unconfirmed, no height, and not in the mempool.
+     * Other HTTP, transport, and decoding failures propagate, including coroutine cancellation.
+     */
     override suspend fun getTxStatus(txId: TxId): Blockchain.TxStatus {
         return try {
             val response =
@@ -158,6 +205,11 @@ class RPCBlockchain private constructor() : Blockchain {
         }
     }
 
+    /**
+     * Estimates the fee rate in satoshis per virtual byte for confirmation within [confirmTarget]
+     * blocks, rounding up to a whole satoshi per virtual byte. Returns `2f` if the estimate is
+     * absent or RPC, HTTP, transport, or decoding fails. Coroutine cancellation propagates.
+     */
     override suspend fun estimateFeeRate(confirmTarget: Int): Float =
         try {
             val response =
@@ -183,6 +235,11 @@ class RPCBlockchain private constructor() : Blockchain {
             2f
         }
 
+    /**
+     * Fetches and decodes the transaction identified by [txId]. Returns `null` for an absent or
+     * blank result, a mismatched transaction ID, or RPC, HTTP, transport, or decoding failures.
+     * Coroutine cancellation propagates.
+     */
     override suspend fun getRawTx(txId: TxId): Transaction? {
         return try {
             val txHex =
@@ -208,6 +265,13 @@ class RPCBlockchain private constructor() : Blockchain {
         }
     }
 
+    /**
+     * Returns block times in Unix seconds at [height], reusing complete results by block hash.
+     * Both times are `null` if the timestamp is missing; only median time is `null` if it is missing.
+     * RPC, HTTP, transport, and decoding failures propagate, including coroutine cancellation.
+     *
+     * @throws Exception If the block hash or header result is missing.
+     */
     private suspend fun blockTime(height: Long): BlockTime {
         val blockHashHex =
             httpClient.sendRpc<String>("getblockhash", JsonArray(listOf(JsonPrimitive(height))))
@@ -236,6 +300,10 @@ class RPCBlockchain private constructor() : Blockchain {
         return blockTime
     }
 
+    /**
+     * Broadcasts [parent] first, then [child] only if the parent succeeds. Returns whether the
+     * parent broadcast succeeded, regardless of the child's result. Coroutine cancellation propagates.
+     */
     private suspend fun broadcastPackageFallback(
         parent: Transaction,
         child: Transaction,
