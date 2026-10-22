@@ -7,6 +7,7 @@ import com.arkade.network.jsonrpc.sendRpc
 import com.arkade.utils.Log
 import com.arkade.utils.debug
 import com.arkade.utils.warning
+import com.ionspin.kotlin.bignum.decimal.toBigDecimal
 import fr.acinq.bitcoin.ByteVector32
 import fr.acinq.bitcoin.Transaction
 import fr.acinq.bitcoin.TxId
@@ -17,7 +18,6 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.float
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -169,8 +169,13 @@ class RPCBlockchain private constructor() : Blockchain {
                         ),
                     ),
                 )
-            val feeRate = response?.jsonObject["feerate"]?.jsonPrimitive?.float
-            if (feeRate != null) ceil(feeRate * 100_000) else 2f
+            val feeRate =
+                response
+                    ?.jsonObject["feerate"]
+                    ?.jsonPrimitive
+                    ?.content
+                    ?.toBigDecimal()
+            feeRate?.multiply(100_000.toBigDecimal())?.ceil()?.floatValue() ?: 2f
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
