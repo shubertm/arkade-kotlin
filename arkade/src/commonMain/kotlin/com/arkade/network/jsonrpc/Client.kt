@@ -8,6 +8,7 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
+import io.ktor.utils.io.CancellationException
 import kotlinx.serialization.json.JsonArray
 
 suspend inline fun <reified T> HttpClient.sendRpc(
@@ -23,7 +24,11 @@ suspend inline fun <reified T> HttpClient.sendRpc(
         }
 
     if (!response.status.isSuccess()) {
-        val rpcError: RpcError? = runCatching { response.body<RpcResponse<T>>().error }.getOrNull()
+        val rpcError: RpcError? =
+            runCatching { response.body<RpcResponse<T>>().error }.getOrElse { throwable ->
+                if (throwable is CancellationException) throw throwable
+                null
+            }
         throw if (rpcError != null) {
             RpcException("$rpcError")
         } else {
