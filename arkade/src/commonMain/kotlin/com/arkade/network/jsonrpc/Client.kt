@@ -2,6 +2,7 @@ package com.arkade.network.jsonrpc
 
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
+import io.ktor.client.plugins.expectSuccess
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
@@ -15,6 +16,7 @@ suspend inline fun <reified T> HttpClient.sendRpc(
 ): T? {
     val response =
         post {
+            expectSuccess = false
             contentType(ContentType.Application.Json)
             val requestBody = RpcRequest(method = method, params = params)
             setBody(requestBody)
