@@ -12,7 +12,7 @@
 ---
 
 ## Features
-- **Kotlin Multiplatform support**: Works across Android, iOS, and desktop.
+- **Kotlin Multiplatform support**: Works across Android, iOS (Not yet implemented), and desktop.
 - **Bitcoin wallet integration**: Build wallets with Ark Protocol support.
 - **Off-chain transactions**: Enables fast and efficient transfers.
 - **Sample app included**: Reference implementation to help developers get started.
@@ -22,12 +22,13 @@
 ## Architecture
 The repository is organized into the following modules:
 
-| Module | Description |
-|--------|-------------|
-| **core** | Core Arkade types and utilities for the Ark Protocol. |
-| **app** | Sample application demonstrating SDK usage. |
-| **buildSrc** | Gradle build configuration and dependencies. |
-| **scripts** | Utility scripts for building and running the project. |
+| Module       | Description                                              |
+|--------------|----------------------------------------------------------|
+| **core**     | Core Arkade types and utilities for the Ark Protocol.    |
+| **app**      | Sample application demonstrating SDK usage.              |
+| **buildSrc** | Gradle build configuration and dependencies.             |
+| **scripts**  | Utility scripts for building and running the project.    |
+| **regtest**  | Arkade self-contained cross-platform regtest environment |
 
 
 <p align="center">
@@ -41,7 +42,6 @@ The repository is organized into the following modules:
 ### Prerequisites
 - **Kotlin 1.9+**
 - **Gradle 8+**
-- **Nigiri** (for integration tests)
 - **Docker** (for server and wallet containers)
 
 ### Installation
@@ -50,6 +50,7 @@ Clone the repository:
 git clone https://github.com/shubertm/arkade-kotlin.git
 cd arkade-kotlin
 ```
+
 
 Build the project:
 ```bash
@@ -126,21 +127,21 @@ cp scripts/pre-commit .git/hooks/
 ./gradlew testUnit
 ```
 #### Integration
-- Install Nigiri
+- Fetch [Arkade Regtest](https://github.com/ArkLabsHQ/arkade-regtest)
     ```shell
-    curl https://getnigiri.vulpem.com | bash
+  git submodule update --init
     ```
-- Run Nigiri
+- Start Regtest Environment
     ```shell
-    nigiri start
+    sudo node ./regtest/regtest.mjs start
     ``` 
-- Run all docker e2e tests
+- Run all e2e tests
     ```shell 
-    ./gradlew testE2EDocker
+    ./gradlew testE2E
     ```
-- Stop Nigiri
+- Stop and Clean Regtest Environment
     ```shell
-    nigiri stop --delete
+    sudo node ./regtest/regtest.mjs clean
     ```
 ---
 
