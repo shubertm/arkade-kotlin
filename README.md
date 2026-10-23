@@ -12,7 +12,7 @@
 ---
 
 ## Features
-- **Kotlin Multiplatform support**: Works across Android, iOS (Not yet implemented), and desktop.
+- **Kotlin Multiplatform support**: Works across Android and desktop, iOS is not yet supported.
 - **Bitcoin wallet integration**: Build wallets with Ark Protocol support.
 - **Off-chain transactions**: Enables fast and efficient transfers.
 - **Sample app included**: Reference implementation to help developers get started.
