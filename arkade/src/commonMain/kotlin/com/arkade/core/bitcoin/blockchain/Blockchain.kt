@@ -92,3 +92,8 @@ data class BoardingUtxo(
     val blockHeight: Long? = null,
     val blockTime: Long? = null,
 )
+
+data class BlockTime(
+    val timestamp: Long? = null,
+    val medianTime: Long? = null,
+)
