@@ -43,6 +43,8 @@ The repository is organized into the following modules:
 - **Kotlin 1.9+**
 - **Gradle 8+**
 - **Docker** (for server and wallet containers)
+  - **Docker Compose**
+- **Node.js >=18** (for Arkade regtest)
 
 ### Installation
 Clone the repository:
