@@ -135,7 +135,7 @@ cp scripts/pre-commit .git/hooks/
     ```
 - Start Regtest Environment
     ```shell
-    sudo node ./regtest/regtest.mjs start
+    node ./regtest/regtest.mjs start
     ``` 
 - Run all e2e tests
     ```shell 
@@ -143,7 +143,7 @@ cp scripts/pre-commit .git/hooks/
     ```
 - Stop and Clean Regtest Environment
     ```shell
-    sudo node ./regtest/regtest.mjs clean
+    node ./regtest/regtest.mjs clean
     ```
 ---
 
