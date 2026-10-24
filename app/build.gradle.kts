@@ -7,13 +7,12 @@ plugins {
 android {
     namespace = "com.arkade.app"
     compileSdk {
-        version = release(36)
+        version = release(37)
     }
 
     defaultConfig {
         applicationId = "com.arkade"
         minSdk = 26
-        targetSdk = 36
         versionCode = 1
         versionName = "1.0"
 
