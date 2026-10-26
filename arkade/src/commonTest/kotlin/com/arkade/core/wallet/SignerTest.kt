@@ -59,7 +59,7 @@ open class SignerTest {
             with(Psbt(tx)) {
                 updateWitnessInput(
                     input.outPoint,
-                    output,
+                    prevOut,
                     sighashType = SigHash.SIGHASH_ALL,
                     taprootInternalKey = signer.xOnlyPublicKey(descriptor),
                 )
@@ -67,7 +67,7 @@ open class SignerTest {
 
         val signedTx = signer.sign(descriptor, psbt, arrayOf(0))
 
-        signedTx.correctlySpends(listOf(prevTx), ScriptFlags.MANDATORY_SCRIPT_VERIFY_FLAGS)
+        signedTx.correctlySpends(listOf(prevTx), ScriptFlags.SCRIPT_VERIFY_TAPROOT)
     }
 
     suspend fun testSigningMessageUsingSchnorr(
