@@ -55,7 +55,7 @@ class HDSigner private constructor(
         descriptor: String,
         psbt: Psbt,
         inputIndexes: Array<Int>,
-    ): Transaction =
+    ): Psbt =
         mutex.withLock {
             deriveChildPrivateKey(descriptor)
             super.sign(descriptor, psbt, inputIndexes)
@@ -65,7 +65,7 @@ class HDSigner private constructor(
         descriptor: String,
         psbt: Psbt,
         outpoints: Array<OutPoint>,
-    ): Transaction =
+    ): Psbt =
         mutex.withLock {
             deriveChildPrivateKey(descriptor)
             super.sign(descriptor, psbt, outpoints)

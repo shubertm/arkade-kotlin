@@ -26,7 +26,7 @@ interface WalletSignerManager {
         descriptor: String,
         psbt: Psbt,
         inputIndexes: Array<Int>,
-    ): Transaction
+    ): Psbt
 
     /**
      * Signs [psbt] using [signer] for the given [descriptor].
@@ -40,7 +40,7 @@ interface WalletSignerManager {
         descriptor: String,
         psbt: Psbt,
         outpoints: Array<OutPoint>,
-    ): Transaction
+    ): Psbt
 
     /**
      * Signs [message] using [signer] for the given [descriptor].
