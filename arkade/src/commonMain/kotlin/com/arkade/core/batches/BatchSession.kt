@@ -19,7 +19,6 @@ import com.arkade.utils.info
 import fr.acinq.bitcoin.ByteVector
 import fr.acinq.bitcoin.ByteVector32
 import fr.acinq.bitcoin.ScriptTree
-import fr.acinq.bitcoin.Transaction
 import fr.acinq.bitcoin.TxId
 import fr.acinq.bitcoin.TxOut
 import fr.acinq.bitcoin.crypto.musig2.IndividualNonce
@@ -204,7 +203,7 @@ class BatchSession(
 
             val signerDescriptor = requireNotNull(vtxoCoin.signerDescriptor) { "Missing VTXO coin signer descriptor" }
             val signedForfeitTx = wallet.sign(signerDescriptor, forfeitTx, arrayOf(0))
-            val signedForfeitTxBytes = Transaction.write(signedForfeitTx)
+            val signedForfeitTxBytes = Psbt.write(signedForfeitTx).toByteArray()
             signedForfeitTxs.add(Base64.encode(signedForfeitTxBytes))
         }
 
@@ -225,17 +224,16 @@ class BatchSession(
                         )?.getOrElse { throw IllegalStateException("Failed to update boarding input witness") }
 
                 val signerDescriptor = requireNotNull(boardingCoin.signerDescriptor) { "Missing boarding coin signer descriptor" }
-                signedCommitmentPSBT =
-                    Psbt(wallet.sign(signerDescriptor, signedCommitmentPSBT!!, arrayOf(outpoint)))
+                signedCommitmentPSBT = wallet.sign(signerDescriptor, signedCommitmentPSBT!!, arrayOf(outpoint))
             }
         }
 
-        val signedCommitmentTx = signedCommitmentPSBT?.global?.tx
+        val signedCommitmentTx = signedCommitmentPSBT
 
         if (signedForfeitTxs.isNotEmpty() || signedCommitmentTx != null) {
             val signedCommitmentTxBase64 =
                 if (signedCommitmentTx != null) {
-                    val signedCommitmentTxBytes = Transaction.write(signedCommitmentTx)
+                    val signedCommitmentTxBytes = Psbt.write(signedCommitmentTx).toByteArray()
                     Base64.encode(signedCommitmentTxBytes)
                 } else {
                     null
