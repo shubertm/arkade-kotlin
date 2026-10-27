@@ -1,5 +1,7 @@
 package com.arkade.core.wallet
 
+import com.arkade.core.bitcoin.finalizeWitnessInputs
+import com.arkade.core.bitcoin.getFullySignedTx
 import com.arkade.core.taproot.getTaprootScriptPubKey
 import com.arkade.core.wallet.signer.Signer
 import fr.acinq.bitcoin.ByteVector
@@ -29,11 +31,16 @@ open class SignerTest {
                 Satoshi(10000),
                 scriptPubKey,
             )
+        val prevOut1 =
+            TxOut(
+                Satoshi(10000),
+                scriptPubKey,
+            )
         val prevTx =
             Transaction(
                 3,
                 listOf(),
-                listOf(prevOut),
+                listOf(prevOut, prevOut1),
                 0,
             )
 
@@ -42,32 +49,46 @@ open class SignerTest {
                 OutPoint(prevTx.txid, 0),
                 0,
             )
+        val input1 =
+            TxIn(
+                OutPoint(prevTx.txid, 1),
+                0,
+            )
+
         val output =
             TxOut(
                 Satoshi(6000),
                 scriptPubKey,
             )
+        val output1 =
+            TxOut(
+                Satoshi(12000),
+                scriptPubKey,
+            )
         val tx =
             Transaction(
                 3,
-                listOf(input),
-                listOf(output),
+                listOf(input, input1),
+                listOf(output, output1),
                 0,
             )
 
         val psbt =
-            with(Psbt(tx)) {
-                updateWitnessInput(
-                    input.outPoint,
-                    output,
-                    sighashType = SigHash.SIGHASH_ALL,
-                    taprootInternalKey = signer.xOnlyPublicKey(descriptor),
-                )
-            }.right!!
+            tx.txIn.fold(Psbt(tx)) { psbt, input ->
+                psbt
+                    .updateWitnessInput(
+                        input.outPoint,
+                        prevTx.txOut[input.outPoint.index.toInt()],
+                        sighashType = SigHash.SIGHASH_ALL,
+                        taprootInternalKey = signer.xOnlyPublicKey(descriptor),
+                    ).right!!
+            }
 
-        val signedTx = signer.sign(descriptor, psbt, arrayOf(0))
+        var signedTx = signer.sign(descriptor, psbt, arrayOf(0, 1))
 
-        signedTx.correctlySpends(listOf(prevTx), ScriptFlags.MANDATORY_SCRIPT_VERIFY_FLAGS)
+        signedTx = signedTx.finalizeWitnessInputs(listOf(0, 1))
+
+        Transaction.correctlySpends(signedTx.getFullySignedTx(), prevTx, ScriptFlags.MANDATORY_SCRIPT_VERIFY_FLAGS)
     }
 
     suspend fun testSigningMessageUsingSchnorr(

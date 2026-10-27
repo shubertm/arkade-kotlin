@@ -170,7 +170,7 @@ class WalletImpl(
         descriptor: String,
         psbt: Psbt,
         inputIndexes: Array<Int>,
-    ): Transaction = signer.sign(descriptor, psbt, inputIndexes)
+    ): Psbt = signer.sign(descriptor, psbt, inputIndexes)
 
     /**
      * Signs [psbt] by delegating to [signer].
@@ -184,7 +184,7 @@ class WalletImpl(
         descriptor: String,
         psbt: Psbt,
         outpoints: Array<OutPoint>,
-    ): Transaction = signer.sign(descriptor, psbt, outpoints)
+    ): Psbt = signer.sign(descriptor, psbt, outpoints)
 
     /**
      * Signs [message] by delegating to [signer].

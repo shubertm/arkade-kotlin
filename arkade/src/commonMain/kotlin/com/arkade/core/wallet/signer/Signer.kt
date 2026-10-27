@@ -36,7 +36,7 @@ interface Signer {
         descriptor: String,
         psbt: Psbt,
         inputIndexes: Array<Int>,
-    ): Transaction
+    ): Psbt
 
     /**
      * Signs the given [psbt] using the key derived for [descriptor].
@@ -50,7 +50,7 @@ interface Signer {
         descriptor: String,
         psbt: Psbt,
         outpoints: Array<OutPoint>,
-    ): Transaction
+    ): Psbt
 
     /**
      * Signs an arbitrary [message] using the key derived for [descriptor].
@@ -176,7 +176,7 @@ SignerImpl : Signer {
         descriptor: String,
         psbt: Psbt,
         inputIndexes: Array<Int>,
-    ): Transaction {
+    ): Psbt {
         var signedTx = psbt
         val indices =
             if (inputIndexes.isEmpty()) {
@@ -186,7 +186,7 @@ SignerImpl : Signer {
             }
 
         signedTx = signAll(signedTx, indices)
-        return signedTx.global.tx
+        return signedTx
     }
 
     /**
@@ -202,11 +202,11 @@ SignerImpl : Signer {
         descriptor: String,
         psbt: Psbt,
         outpoints: Array<OutPoint>,
-    ): Transaction {
+    ): Psbt {
         var signedTx = psbt
         if (outpoints.isEmpty()) {
             signedTx = signAll(signedTx)
-            return signedTx.global.tx
+            return signedTx
         }
 
         outpoints.forEach { outpoint ->
@@ -216,7 +216,7 @@ SignerImpl : Signer {
                 }
             signedTx = result.psbt
         }
-        return signedTx.global.tx
+        return signedTx
     }
 
     /**
@@ -345,7 +345,7 @@ SignerImpl : Signer {
         indices.forEach { index ->
             val result =
                 signedTx.sign(privateKey, index).getOrElse {
-                    throw IllegalStateException("Failed to sign transaction")
+                    throw IllegalStateException("Failed to sign transaction $it")
                 }
             signedTx = result.psbt
         }
