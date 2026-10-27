@@ -73,9 +73,8 @@ open class SignerTest {
                 0,
             )
 
-        var psbt = Psbt(tx)
-        tx.txIn.forEach { input ->
-            psbt =
+        val psbt =
+            tx.txIn.fold(Psbt(tx)) { psbt, input ->
                 psbt
                     .updateWitnessInput(
                         input.outPoint,
@@ -83,7 +82,7 @@ open class SignerTest {
                         sighashType = SigHash.SIGHASH_ALL,
                         taprootInternalKey = signer.xOnlyPublicKey(descriptor),
                     ).right!!
-        }
+            }
 
         var signedTx = signer.sign(descriptor, psbt, arrayOf(0, 1))
 
