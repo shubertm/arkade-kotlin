@@ -49,7 +49,7 @@ class HDSigner private constructor(
      * @param descriptor The output descriptor whose trailing index identifies the child key.
      * @param psbt The PSBT to sign.
      * @param inputIndexes The indexes of the inputs to sign; if empty, all inputs are signed.
-     * @return The fully signed [Transaction].
+     * @return The PSBT with all requested inputs signed.
      */
     override suspend fun sign(
         descriptor: String,

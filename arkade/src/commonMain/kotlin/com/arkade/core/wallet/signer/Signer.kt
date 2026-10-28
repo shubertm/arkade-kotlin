@@ -30,7 +30,7 @@ interface Signer {
      * @param descriptor The output descriptor identifying which key to sign with.
      * @param psbt The PSBT to sign.
      * @param inputIndexes The indexes of the inputs to sign; if empty, all inputs are signed.
-     * @return The fully signed [Transaction].
+     * @return The PSBT with all requested inputs signed..
      */
     suspend fun sign(
         descriptor: String,
@@ -44,7 +44,7 @@ interface Signer {
      * @param descriptor The output descriptor identifying which key to sign with.
      * @param psbt The PSBT to sign.
      * @param outpoints The outpoints of the inputs to sign; if empty, all inputs are signed.
-     * @return The fully signed [Transaction].
+     * @return The PSBT with all requested inputs signed..
      */
     suspend fun sign(
         descriptor: String,
@@ -169,7 +169,7 @@ SignerImpl : Signer {
      * @param descriptor The output descriptor identifying which key to sign with.
      * @param psbt The PSBT to sign.
      * @param inputIndexes The indexes of the inputs to sign; if empty, all inputs are signed.
-     * @return The fully signed [Transaction].
+     * @return TThe PSBT with all requested inputs signed.
      * @throws IllegalStateException if signing any of the targeted inputs fails.
      */
     override suspend fun sign(
@@ -195,7 +195,7 @@ SignerImpl : Signer {
      * @param descriptor The output descriptor identifying which key to sign with.
      * @param psbt The PSBT to sign.
      * @param outpoints The outpoints of the inputs to sign; if empty, all inputs are signed.
-     * @return The fully signed [Transaction].
+     * @return The PSBT with all requested inputs signed.
      * @throws IllegalStateException if signing any of the targeted inputs fails.
      */
     override suspend fun sign(
