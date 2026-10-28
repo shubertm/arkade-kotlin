@@ -14,7 +14,6 @@ import com.arkade.core.wallet.signer.Signer
 import com.arkade.core.wallet.signer.SingleKeySigner
 import com.arkade.repositories.wallet.WalletRepo
 import fr.acinq.bitcoin.OutPoint
-import fr.acinq.bitcoin.Transaction
 import fr.acinq.bitcoin.psbt.Psbt
 import kotlinx.coroutines.CancellationException
 
@@ -164,7 +163,7 @@ class WalletImpl(
      * @param descriptor The output descriptor identifying which key to sign with.
      * @param psbt The PSBT to sign.
      * @param inputIndexes The indexes of the inputs to sign; if empty, all inputs are signed.
-     * @return The fully signed [Transaction].
+     * @return The PSBT with all requested inputs signed.
      */
     override suspend fun sign(
         descriptor: String,
@@ -178,7 +177,7 @@ class WalletImpl(
      * @param descriptor The output descriptor identifying which key to sign with.
      * @param psbt The PSBT to sign.
      * @param outpoints The outpoints of the inputs to sign; if empty, all inputs are signed.
-     * @return The fully signed [Transaction].
+     * @return The PSBT with all requested inputs signed.
      */
     override suspend fun sign(
         descriptor: String,

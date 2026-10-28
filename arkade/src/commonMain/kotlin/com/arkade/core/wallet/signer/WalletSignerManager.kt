@@ -1,7 +1,6 @@
 package com.arkade.core.wallet.signer
 
 import fr.acinq.bitcoin.OutPoint
-import fr.acinq.bitcoin.Transaction
 import fr.acinq.bitcoin.psbt.Psbt
 
 /**
@@ -20,7 +19,7 @@ interface WalletSignerManager {
      * @param descriptor The output descriptor identifying which key to sign with.
      * @param psbt The PSBT to sign.
      * @param inputIndexes The indexes of the inputs to sign; if empty, all inputs are signed.
-     * @return The fully signed [Transaction].
+     * @return The PSBT with all requested inputs signed.
      */
     suspend fun sign(
         descriptor: String,
@@ -34,7 +33,7 @@ interface WalletSignerManager {
      * @param descriptor The output descriptor identifying which key to sign with.
      * @param psbt The PSBT to sign.
      * @param outpoints The outpoints of the inputs to sign; if empty, all inputs are signed.
-     * @return The fully signed [Transaction].
+     * @return The PSBT with all requested inputs signed.
      */
     suspend fun sign(
         descriptor: String,
