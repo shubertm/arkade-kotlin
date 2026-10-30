@@ -16,7 +16,7 @@ runner = "1.7.0"
 core = "1.7.0"
 lifecycleRuntimeKtx = "2.11.0"
 activityCompose = "1.13.0"
-composeBom = "2025.07.00"
+composeBom = "2026.09.00"
 kotlinSerialization = "1.12.0"
 squareWire = "6.1.0"
 room = "2.8.4"
@@ -72,6 +72,8 @@ androidx-compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "u
 androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
 androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
+androidx-compose-material-icons = { group = "androidx.compose.material", name = "material-icons-core" }
+
 androidx-compose-material3-adaptive-navigation-suite = { group = "androidx.compose.material3", name = "material3-adaptive-navigation-suite" }
 
 square-wire-runtime = { group = "com.squareup.wire", name = "wire-runtime", version.ref = "squareWire" }
