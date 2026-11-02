@@ -210,30 +210,29 @@ class BatchSession(
         var signedCommitmentPSBT: Psbt? = null
         val boardingCoins = inputs.filter { it.isUnrolled }
         if (boardingCoins.isNotEmpty()) {
-            signedCommitmentPSBT = commitmentPSBT
-            for (boardingCoin in boardingCoins) {
-                val outpoint = boardingCoin.outpoint
-                val boardingInput = commitmentPSBT.getInput(outpoint)
-                requireNotNull(boardingInput) { "Boarding input $outpoint not found in commitment tx" }
-
-                signedCommitmentPSBT =
-                    signedCommitmentPSBT
-                        ?.updateWitnessInput(
+            signedCommitmentPSBT =
+                boardingCoins.fold(commitmentPSBT) { psbt, coin ->
+                    val outpoint = coin.outpoint
+                    val input = psbt.getInput(outpoint)
+                    requireNotNull(input) { "Boarding input $outpoint not found in commitment tx" }
+                    psbt
+                        .updateWitnessInput(
                             outpoint,
-                            boardingCoin.txOut,
-                        )?.getOrElse { throw IllegalStateException("Failed to update boarding input witness") }
+                            coin.txOut,
+                        ).getOrElse { throw IllegalStateException("Failed to update boarding input witness") }
+                }
 
-                val signerDescriptor = requireNotNull(boardingCoin.signerDescriptor) { "Missing boarding coin signer descriptor" }
-                signedCommitmentPSBT = wallet.sign(signerDescriptor, signedCommitmentPSBT!!, arrayOf(outpoint))
-            }
+            signedCommitmentPSBT =
+                boardingCoins.fold(signedCommitmentPSBT) { psbt, coin ->
+                    val signerDescriptor = requireNotNull(coin.signerDescriptor) { "Missing boarding coin signer descriptor" }
+                    wallet.sign(signerDescriptor, psbt, arrayOf(coin.outpoint))
+                }
         }
 
-        val signedCommitmentTx = signedCommitmentPSBT
-
-        if (signedForfeitTxs.isNotEmpty() || signedCommitmentTx != null) {
+        if (signedForfeitTxs.isNotEmpty() || signedCommitmentPSBT != null) {
             val signedCommitmentTxBase64 =
-                if (signedCommitmentTx != null) {
-                    val signedCommitmentTxBytes = Psbt.write(signedCommitmentTx).toByteArray()
+                if (signedCommitmentPSBT != null) {
+                    val signedCommitmentTxBytes = Psbt.write(signedCommitmentPSBT).toByteArray()
                     Base64.encode(signedCommitmentTxBytes)
                 } else {
                     null
