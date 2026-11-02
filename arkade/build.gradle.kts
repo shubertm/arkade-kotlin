@@ -1,4 +1,5 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.konan.target.HostManager
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
@@ -45,23 +46,25 @@ kotlin {
         }
     }
 
-    val xcfName = "libKit"
+    if (HostManager.hostIsMac) {
+        val xcfName = "libKit"
 
-    iosX64 {
-        binaries.framework {
-            baseName = xcfName
+        iosX64 {
+            binaries.framework {
+                baseName = xcfName
+            }
         }
-    }
 
-    iosArm64 {
-        binaries.framework {
-            baseName = xcfName
+        iosArm64 {
+            binaries.framework {
+                baseName = xcfName
+            }
         }
-    }
 
-    iosSimulatorArm64 {
-        binaries.framework {
-            baseName = xcfName
+        iosSimulatorArm64 {
+            binaries.framework {
+                baseName = xcfName
+            }
         }
     }
 
@@ -155,9 +158,11 @@ kotlin {
 dependencies {
     add("kspJvm", libs.androidx.room.compiler)
     add("kspAndroid", libs.androidx.room.compiler)
-    add("kspIosSimulatorArm64", libs.androidx.room.compiler)
-    add("kspIosX64", libs.androidx.room.compiler)
-    add("kspIosArm64", libs.androidx.room.compiler)
+    if (HostManager.hostIsMac) {
+        add("kspIosSimulatorArm64", libs.androidx.room.compiler)
+        add("kspIosX64", libs.androidx.room.compiler)
+        add("kspIosArm64", libs.androidx.room.compiler)
+    }
 }
 
 tasks.register<E2ETestTask>("testE2E")
