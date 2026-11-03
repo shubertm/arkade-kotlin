@@ -29,7 +29,7 @@ kotlin {
         }
     }
 
-    androidLibrary {
+    android {
         namespace = "com.arkade"
         compileSdk {
             version = release(37)
