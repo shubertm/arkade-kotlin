@@ -165,9 +165,13 @@ dependencies {
     }
 }
 
-tasks.register<E2ETestTask>("testE2E")
+tasks.register<E2ETestTask>("testE2E") {
+    description = "Executes all Arkade end to end tests, should pass before any merge"
+}
 
-tasks.register<UnitTestTask>("testUnit")
+tasks.register<UnitTestTask>("testUnit") {
+    description = "Exectutes all unit tests, should pass before any commit"
+}
 
 tasks.withType<Test>().configureEach {
     jvmArgs(
