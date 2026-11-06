@@ -122,7 +122,7 @@ kotlin {
             dependencies {
                 val targetDep =
                     when {
-                        HostManager.hostIsLinux -> libs.secp256k1.kmp.jni.jvm.linux
+                        HostManager.hostOs() == "linux" -> libs.secp256k1.kmp.jni.jvm.linux
                         HostManager.hostIsMingw -> libs.secp256k1.kmp.jni.jvm.windows
                         HostManager.hostIsMac -> libs.secp256k1.kmp.jni.jvm.macos
                         else -> error("Unsupported OS: ${HostManager.hostOs()}")
