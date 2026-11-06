@@ -12,8 +12,6 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
-val currentOs: String = System.getProperty("os.name").lowercase()
-
 wire {
     kotlin {}
 }
@@ -124,10 +122,10 @@ kotlin {
             dependencies {
                 val targetDep =
                     when {
-                        currentOs.contains("linux") -> libs.secp256k1.kmp.jni.jvm.linux
-                        currentOs.contains("windows") -> libs.secp256k1.kmp.jni.jvm.windows
-                        currentOs.contains("mac") || currentOs.contains("darwin") -> libs.secp256k1.kmp.jni.jvm.macos
-                        else -> error("Unsupported OS: $currentOs")
+                        HostManager.hostOs() == "linux" -> libs.secp256k1.kmp.jni.jvm.linux
+                        HostManager.hostIsMingw -> libs.secp256k1.kmp.jni.jvm.windows
+                        HostManager.hostIsMac -> libs.secp256k1.kmp.jni.jvm.macos
+                        else -> error("Unsupported OS: ${HostManager.hostOs()}")
                     }
                 implementation(targetDep)
             }
