@@ -1,5 +1,6 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.konan.target.HostManager
+import org.jetbrains.kotlin.org.apache.commons.lang3.SystemUtils
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
@@ -122,10 +123,10 @@ kotlin {
             dependencies {
                 val targetDep =
                     when {
-                        HostManager.hostOs() == "linux" -> libs.secp256k1.kmp.jni.jvm.linux
-                        HostManager.hostOs() == "windows" -> libs.secp256k1.kmp.jni.jvm.windows
-                        HostManager.hostIsMac -> libs.secp256k1.kmp.jni.jvm.macos
-                        else -> error("Unsupported OS: ${HostManager.hostOs()}")
+                        SystemUtils.IS_OS_LINUX -> libs.secp256k1.kmp.jni.jvm.linux
+                        SystemUtils.IS_OS_WINDOWS -> libs.secp256k1.kmp.jni.jvm.windows
+                        SystemUtils.IS_OS_MAC -> libs.secp256k1.kmp.jni.jvm.macos
+                        else -> error("Unsupported OS: ${SystemUtils.OS_NAME}")
                     }
                 implementation(targetDep)
             }
@@ -156,7 +157,7 @@ kotlin {
 dependencies {
     add("kspJvm", libs.androidx.room.compiler)
     add("kspAndroid", libs.androidx.room.compiler)
-    if (HostManager.hostIsMac) {
+    if (SystemUtils.IS_OS_MAC) {
         add("kspIosSimulatorArm64", libs.androidx.room.compiler)
         add("kspIosX64", libs.androidx.room.compiler)
         add("kspIosArm64", libs.androidx.room.compiler)
