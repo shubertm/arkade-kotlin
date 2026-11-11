@@ -164,7 +164,7 @@ class HDSigner private constructor(
      * Should be called before [sign], [signMessage], or any function relying on [privateKey]
      * being derived for the correct index.
      *
-     * @param descriptor The output descriptor whose trailing segment (before `)`) is the
+     * @param descriptor The output descriptor whose trailing segment before `)` is the
      * child index to derive, e.g. `.../0/5)`.
      * @throws IllegalArgumentException if the trailing segment of [descriptor] is not a
      * valid index.
