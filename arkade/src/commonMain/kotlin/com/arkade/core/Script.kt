@@ -77,7 +77,7 @@ fun buildScriptTree(leaves: List<ByteArray>): ScriptTree {
     val leaves = leaves.map { ScriptTree.Leaf(ByteVector(it), 0) }
     val branches = mutableListOf<ScriptTree.Branch>()
 
-    for (leafIndex in 0 until leaves.size step 2) {
+    for (leafIndex in leaves.indices step 2) {
         if (leafIndex == leaves.size - 1) {
             val lastBranch = branches.removeLastOrNull()
             if (lastBranch != null) {

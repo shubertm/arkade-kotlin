@@ -30,7 +30,7 @@ interface Signer {
      * @param descriptor The output descriptor identifying which key to sign with.
      * @param psbt The PSBT to sign.
      * @param inputIndexes The indexes of the inputs to sign; if empty, all inputs are signed.
-     * @return The PSBT with all requested inputs signed..
+     * @return The PSBT with all requested inputs signed.
      */
     suspend fun sign(
         descriptor: String,
@@ -44,7 +44,7 @@ interface Signer {
      * @param descriptor The output descriptor identifying which key to sign with.
      * @param psbt The PSBT to sign.
      * @param outpoints The outpoints of the inputs to sign; if empty, all inputs are signed.
-     * @return The PSBT with all requested inputs signed..
+     * @return The PSBT with all requested inputs signed.
      */
     suspend fun sign(
         descriptor: String,

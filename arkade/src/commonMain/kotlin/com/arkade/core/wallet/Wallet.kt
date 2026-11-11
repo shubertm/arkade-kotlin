@@ -23,7 +23,6 @@ import fr.acinq.bitcoin.MnemonicCode
 import fr.acinq.bitcoin.OutPoint
 import fr.acinq.bitcoin.PrivateKey
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.IO
 import kotlinx.coroutines.withContext
 import org.koin.core.parameter.parametersOf
 

@@ -27,6 +27,7 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
 import kotlin.time.Clock
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Coordinates the lifecycle of batches on behalf of the wallet's registered intents.
@@ -82,7 +83,7 @@ class BatchManagementService(
                 if (cause is CancellationException) throw cause
 
                 Log.error(LOG_TAG, "Error in batch event stream, restarting in 5 seconds")
-                delay(EVENT_STREAM_RETRY_DELAY)
+                delay(EVENT_STREAM_RETRY_DELAY.milliseconds)
                 retries <= 7
             }.collect { event ->
                 processEvent(event)
