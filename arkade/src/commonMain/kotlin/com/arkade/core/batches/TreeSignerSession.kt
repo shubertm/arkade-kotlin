@@ -2,6 +2,7 @@ package com.arkade.core.batches
 
 import com.arkade.core.getArkFieldsCosigners
 import com.arkade.core.wallet.Wallet
+import com.arkade.core.wallet.signer.SignerSession
 import fr.acinq.bitcoin.ByteVector32
 import fr.acinq.bitcoin.PublicKey
 import fr.acinq.bitcoin.Script
@@ -47,7 +48,7 @@ class TreeSignerSession(
     private val descriptor: String,
     private val tapScriptTree: ScriptTree,
     private val rootSharedOutputAmount: Long,
-) {
+) : SignerSession {
     private val tapScriptTreeRoot = tapScriptTree.hash()
     private var myNonces: Map<ByteVector32, Pair<SecretNonce, IndividualNonce>>? = null
     private val treeNonces: MutableMap<ByteVector32, List<IndividualNonce>> = mutableMapOf()
@@ -62,7 +63,7 @@ class TreeSignerSession(
      *
      * @return This wallet's public nonces, keyed by transaction id.
      */
-    suspend fun getNonces(): Map<ByteVector32, IndividualNonce> {
+    override suspend fun getNonces(): Map<ByteVector32, IndividualNonce> {
         if (myNonces == null) {
             myNonces = generateNonces()
         }
@@ -80,7 +81,7 @@ class TreeSignerSession(
      * wallet has no nonce for [txId], if [treeNonces] does not include this wallet's own nonce,
      * or if aggregation fails.
      */
-    fun aggregateNonces(
+    override fun aggregateNonces(
         treeNonces: List<IndividualNonce>,
         txId: TxId,
     ) {
@@ -109,7 +110,7 @@ class TreeSignerSession(
      * transaction in [expected] has not been locally aggregated via [aggregateNonces], or if
      * any aggregated nonce does not match.
      */
-    fun verifyAggregatedNonces(expected: Map<ByteVector32, IndividualNonce>) {
+    override fun verifyAggregatedNonces(expected: Map<ByteVector32, IndividualNonce>) {
         if (myNonces == null) {
             throw UnsupportedOperationException("Nonces not generated")
         }
@@ -134,7 +135,7 @@ class TreeSignerSession(
      * signing a transaction is attempted before its nonces were aggregated via
      * [aggregateNonces].
      */
-    suspend fun sign(): Map<ByteVector32, ByteVector32> {
+    override suspend fun sign(): Map<ByteVector32, ByteVector32> {
         if (myNonces == null) {
             throw UnsupportedOperationException("Nonces not generated")
         }

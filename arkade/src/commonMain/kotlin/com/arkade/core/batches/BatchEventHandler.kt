@@ -1,5 +1,7 @@
 package com.arkade.core.batches
 
+import com.arkade.core.wallet.signer.SignerSession
+
 /**
  * Callback interface for reacting to the lifecycle events of an in-progress batch.
  *
@@ -31,7 +33,7 @@ interface BatchEventHandler {
     /**
      * Called when signing of the VTXO tree has started.
      */
-    suspend fun onTreeSigningStarted(event: BatchEvent.TreeSigningStartedEvent): TreeSignerSession
+    suspend fun onTreeSigningStarted(event: BatchEvent.TreeSigningStartedEvent): SignerSession
 
     /**
      * Called when the VTXO tree signing nonces have been aggregated by the server.

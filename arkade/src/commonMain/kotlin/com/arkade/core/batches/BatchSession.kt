@@ -13,6 +13,7 @@ import com.arkade.core.intents.RegisterIntentMessage
 import com.arkade.core.isUnSpendable
 import com.arkade.core.toXOnlyPubKey
 import com.arkade.core.wallet.Wallet
+import com.arkade.core.wallet.signer.SignerSession
 import com.arkade.network.ArkadeClient
 import com.arkade.utils.Log
 import com.arkade.utils.info
@@ -58,7 +59,7 @@ class BatchSession(
 
     private lateinit var serverInfo: ArkServerInfo
 
-    private var signerSession: TreeSignerSession? = null
+    private var signerSession: SignerSession? = null
 
     var isComplete = false
         private set
