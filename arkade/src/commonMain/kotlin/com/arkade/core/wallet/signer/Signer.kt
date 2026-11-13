@@ -15,6 +15,7 @@ import fr.acinq.bitcoin.crypto.musig2.SecretNonce
 import fr.acinq.bitcoin.psbt.Psbt
 import fr.acinq.bitcoin.utils.Either
 import fr.acinq.bitcoin.utils.getOrElse
+import kotlin.random.Random
 
 /**
  * Signing abstraction for a wallet's key material.
@@ -279,7 +280,8 @@ SignerImpl : Signer {
         extraInput: ByteVector32?,
     ): Pair<SecretNonce, IndividualNonce> {
         val signingKey = Either.Left(privateKey)
-        return Musig2.generateNonce(sessionId, signingKey, pubKeys, message, extraInput)
+        val extraRandomness = ByteVector32(Random.nextBytes(32))
+        return Musig2.generateNonce(sessionId, signingKey, pubKeys, message, extraRandomness)
     }
 
     /**
