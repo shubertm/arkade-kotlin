@@ -83,6 +83,8 @@ interface Signer {
      */
     suspend fun xOnlyPublicKey(descriptor: String): XonlyPublicKey
 
+    suspend fun publicKey(descriptor: String): PublicKey
+
     /**
      * Returns this signer's account-level output descriptor.
      *
@@ -258,6 +260,8 @@ SignerImpl : Signer {
      */
     override suspend fun xOnlyPublicKey(descriptor: String): XonlyPublicKey = privateKey.xOnlyPublicKey()
 
+    override suspend fun publicKey(descriptor: String): PublicKey = privateKey.publicKey()
+
     /**
      * Generates a MuSig2 nonce pair for [privateKey].
      *
@@ -318,18 +322,19 @@ SignerImpl : Signer {
         pubKeys: List<PublicKey>,
         pubNonces: List<IndividualNonce>,
         scriptTree: ScriptTree?,
-    ): ByteVector32 =
-        Musig2
-            .signTaprootInput(
-                privateKey,
-                tx,
-                inputIndex,
-                inputs,
-                pubKeys,
-                privNonce,
-                pubNonces,
-                scriptTree,
-            ).getOrElse { throw it }
+    ): ByteVector32 {
+        val signingSession =
+            Musig2
+                .taprootSession(
+                    tx,
+                    inputIndex,
+                    inputs,
+                    pubKeys,
+                    pubNonces,
+                    scriptTree,
+                ).getOrElse { throw it }
+        return signingSession.sign(privNonce, privateKey).getOrElse { throw it }
+    }
 
     /**
      * Signs each of [indices] on [psbt] with [privateKey], in order, folding the result of each

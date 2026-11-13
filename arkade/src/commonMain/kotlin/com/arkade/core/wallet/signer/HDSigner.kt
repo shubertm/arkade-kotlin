@@ -125,6 +125,12 @@ class HDSigner private constructor(
             super.xOnlyPublicKey(descriptor)
         }
 
+    override suspend fun publicKey(descriptor: String): PublicKey =
+        mutex.withLock {
+            deriveChildPrivateKey(descriptor)
+            super.publicKey(descriptor)
+        }
+
     /**
      * Builds this wallet's account-level Taproot output descriptor.
      *
