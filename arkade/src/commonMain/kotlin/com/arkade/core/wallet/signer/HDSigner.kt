@@ -152,11 +152,10 @@ class HDSigner private constructor(
         descriptor: String,
         pubKeys: List<PublicKey>,
         message: ByteVector32?,
-        extraInput: ByteVector32?,
     ): Pair<SecretNonce, IndividualNonce> =
         mutex.withLock {
             deriveChildPrivateKey(descriptor)
-            super.generateNonce(sessionId, descriptor, pubKeys, message, extraInput)
+            super.generateNonce(sessionId, descriptor, pubKeys, message)
         }
 
     /**

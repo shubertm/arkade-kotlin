@@ -251,47 +251,45 @@ class BatchSession(
     }
 
     override suspend fun onTreeSigningStarted(event: BatchEvent.TreeSigningStartedEvent) {
-        if (signerDescriptor != null) {
-            val vtxoGraph = TxTree.create(vtxos)
-            val commitmentTx =
-                Psbt.read(event.unsignedCommitmentTx.encodeToByteArray()).getOrElse {
-                    throw UnsupportedOperationException("Failed to read commitment tx")
-                }
+        val vtxoGraph = TxTree.create(vtxos)
+        val commitmentTx =
+            Psbt.read(event.unsignedCommitmentTx.encodeToByteArray()).getOrElse {
+                throw UnsupportedOperationException("Failed to read commitment tx")
+            }
 
-            TreeValidator.validateVtxoTxGraph(vtxoGraph, commitmentTx, sweepTapTree.hash())
+        TreeValidator.validateVtxoTxGraph(vtxoGraph, commitmentTx, sweepTapTree.hash())
 
-            validateIntentOutputs(vtxoGraph, commitmentTx)
+        validateIntentOutputs(vtxoGraph, commitmentTx)
 
-            val sharedOutput = commitmentTx.global.tx.txOut[0]
+        val sharedOutput = commitmentTx.global.tx.txOut[0]
 
-            val signer = wallet.signer
-            signerSession = signer.signerSession()
-            signerSession?.init(
-                vtxoGraph,
-                signerDescriptor,
-                sweepTapTree,
-                sharedOutput.amount.sat,
-            )
+        val signer = wallet.signer
+        signerSession = signer.signerSession()
+        signerSession?.init(
+            vtxoGraph,
+            signerDescriptor!!,
+            sweepTapTree,
+            sharedOutput.amount.sat,
+        )
 
-            val nonces =
-                signerSession?.getNonces()?.entries?.associate { entry ->
-                    entry.key.toHex() to entry.value.data.toHex()
-                }!!
+        val nonces =
+            signerSession?.getNonces()?.entries?.associate { entry ->
+                entry.key.toHex() to entry.value.data.toHex()
+            }!!
 
-            val signerPubKey = signer.xOnlyPublicKey(signerDescriptor)
+        val signerPubKey = signer.xOnlyPublicKey(signerDescriptor!!)
 
-            Log.info(
-                LOG_TAG,
-                "SubmitTreeNonces: using signerPubKey=$signerPubKey" +
-                    " (descriptorPubKey would have been ${signerDescriptor.toXOnlyPubKey()})",
-            )
+        Log.info(
+            LOG_TAG,
+            "SubmitTreeNonces: using signerPubKey=$signerPubKey" +
+                " (descriptorPubKey would have been ${signerDescriptor.toXOnlyPubKey()})",
+        )
 
-            client.submitTreeNonces(
-                event.id,
-                signerPubKey.value.toHex(),
-                nonces,
-            )
-        }
+        client.submitTreeNonces(
+            event.id,
+            signerPubKey.value.toHex(),
+            nonces,
+        )
     }
 
     override suspend fun onTreeNoncesAggregated(event: BatchEvent.TreeNoncesAggregatedEvent) {
