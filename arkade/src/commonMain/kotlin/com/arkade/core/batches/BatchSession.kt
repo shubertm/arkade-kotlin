@@ -251,7 +251,7 @@ class BatchSession(
     }
 
     override suspend fun onTreeSigningStarted(event: BatchEvent.TreeSigningStartedEvent) {
-        if (signerSession != null && signerDescriptor != null) {
+        if (signerDescriptor != null) {
             val vtxoGraph = TxTree.create(vtxos)
             val commitmentTx =
                 Psbt.read(event.unsignedCommitmentTx.encodeToByteArray()).getOrElse {
