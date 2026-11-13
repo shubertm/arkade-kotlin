@@ -113,10 +113,6 @@ class HDSigner private constructor(
             )
         }
 
-    override suspend fun signerSession(): SignerSession {
-        TODO("Not yet implemented")
-    }
-
     /**
      * Derives the child private key for [descriptor]'s index and returns its x-only public key.
      *

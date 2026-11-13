@@ -1,5 +1,6 @@
 package com.arkade.core.wallet.signer
 
+import com.arkade.core.batches.TreeSignerSession
 import fr.acinq.bitcoin.ByteVector32
 import fr.acinq.bitcoin.Crypto
 import fr.acinq.bitcoin.OutPoint
@@ -72,7 +73,7 @@ interface Signer {
      *
      * @return A new [SignerSession] instance.
      */
-    suspend fun signerSession(): SignerSession
+    suspend fun signerSession(): SignerSession = TreeSignerSession(this)
 
     /**
      * Derives the x-only public key associated with [descriptor].

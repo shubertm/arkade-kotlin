@@ -1,7 +1,7 @@
 package com.arkade.core.batches
 
 import com.arkade.core.getArkFieldsCosigners
-import com.arkade.core.wallet.Wallet
+import com.arkade.core.wallet.signer.Signer
 import com.arkade.core.wallet.signer.SignerSession
 import fr.acinq.bitcoin.ByteVector32
 import fr.acinq.bitcoin.PublicKey
@@ -43,16 +43,30 @@ import fr.acinq.bitcoin.sat
  * funding the root of [graph].
  */
 class TreeSignerSession(
-    private val wallet: Wallet,
-    private val graph: TxTree,
-    private val descriptor: String,
-    private val tapScriptTree: ScriptTree,
-    private val rootSharedOutputAmount: Long,
+    private val signer: Signer,
 ) : SignerSession {
-    private val tapScriptTreeRoot = tapScriptTree.hash()
+    private lateinit var graph: TxTree
+    private lateinit var descriptor: String
+    private lateinit var tapScriptTree: ScriptTree
+    private lateinit var tapScriptTreeRoot: ByteVector32
+
+    private var rootSharedOutputAmount: Long = 0
     private var myNonces: Map<ByteVector32, Pair<SecretNonce, IndividualNonce>>? = null
     private val treeNonces: MutableMap<ByteVector32, List<IndividualNonce>> = mutableMapOf()
     private val aggregatedNonces: MutableMap<ByteVector32, AggregatedNonce> = mutableMapOf()
+
+    override fun init(
+        graph: TxTree,
+        descriptor: String,
+        tapScriptTree: ScriptTree,
+        rootSharedOutputAmount: Long,
+    ) {
+        this.graph = graph
+        this.descriptor = descriptor
+        this.tapScriptTree = tapScriptTree
+        this.tapScriptTreeRoot = tapScriptTree.hash()
+        this.rootSharedOutputAmount = rootSharedOutputAmount
+    }
 
     /**
      * Generates (on first call) and returns this wallet's public nonces for every transaction in
@@ -164,7 +178,6 @@ class TreeSignerSession(
         if (myNonces != null) {
             throw UnsupportedOperationException("Nonces already generated")
         }
-        val signer = wallet.signer
         val myPubKey = signer.xOnlyPublicKey(descriptor)
 
         val newNonces: MutableMap<ByteVector32, Pair<SecretNonce, IndividualNonce>> = mutableMapOf()
@@ -269,7 +282,7 @@ class TreeSignerSession(
         val pubNonces = treeNonces[txId] ?: throw UnsupportedOperationException("Missing tree nonces")
 
         val partialSig =
-            wallet.signer.signMusig(
+            signer.signMusig(
                 descriptor,
                 tx,
                 listOf(prevOut),
