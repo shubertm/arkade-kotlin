@@ -103,7 +103,6 @@ interface Signer {
      * signer's own public key.
      * @param message The message (typically a sighash) that will be signed, if already known at
      * nonce generation time; `null` if it will only be known later.
-     * @param extraInput Additional randomness to mix into nonce generation, if any.
      * @return A pair of the secret nonce, which must be kept private and used only once for
      * [signMusig], and the corresponding public nonce, which is shared with the other
      * participants.

@@ -265,31 +265,33 @@ class BatchSession(
 
         val signer = wallet.signer
         signerSession = signer.signerSession()
-        signerSession?.init(
-            vtxoGraph,
-            signerDescriptor!!,
-            sweepTapTree,
-            sharedOutput.amount.sat,
-        )
+        if (signerDescriptor != null && signerSession != null) {
+            signerSession?.init(
+                vtxoGraph,
+                signerDescriptor,
+                sweepTapTree,
+                sharedOutput.amount.sat,
+            )
 
-        val nonces =
-            signerSession?.getNonces()?.entries?.associate { entry ->
-                entry.key.toHex() to entry.value.data.toHex()
-            }!!
+            val nonces =
+                signerSession?.getNonces()?.entries?.associate { entry ->
+                    entry.key.toHex() to entry.value.data.toHex()
+                }!!
 
-        val signerPubKey = signer.xOnlyPublicKey(signerDescriptor!!)
+            val signerPubKey = signer.xOnlyPublicKey(signerDescriptor)
 
-        Log.info(
-            LOG_TAG,
-            "SubmitTreeNonces: using signerPubKey=$signerPubKey" +
-                " (descriptorPubKey would have been ${signerDescriptor.toXOnlyPubKey()})",
-        )
+            Log.info(
+                LOG_TAG,
+                "SubmitTreeNonces: using signerPubKey=$signerPubKey" +
+                    " (descriptorPubKey would have been ${signerDescriptor.toXOnlyPubKey()})",
+            )
 
-        client.submitTreeNonces(
-            event.id,
-            signerPubKey.value.toHex(),
-            nonces,
-        )
+            client.submitTreeNonces(
+                event.id,
+                signerPubKey.value.toHex(),
+                nonces,
+            )
+        }
     }
 
     override suspend fun onTreeNoncesAggregated(event: BatchEvent.TreeNoncesAggregatedEvent) {
