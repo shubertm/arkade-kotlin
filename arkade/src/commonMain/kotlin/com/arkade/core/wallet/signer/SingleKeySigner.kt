@@ -17,10 +17,6 @@ class SingleKeySigner private constructor(
     /** The private key decoded from the nsec [secret] provided at construction. */
     override var privateKey = Wallet.getPrivateKeyFromNSec(secret)
 
-    override suspend fun signerSession(): SignerSession {
-        TODO("Not yet implemented")
-    }
-
     /**
      * Returns this wallet's Taproot output descriptor, derived from [privateKey]'s x-only
      * public key.
