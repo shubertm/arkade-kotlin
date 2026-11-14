@@ -1,5 +1,6 @@
 package com.arkade.core.wallet.signer
 
+import com.arkade.core.batches.TreeSignerSession
 import fr.acinq.bitcoin.ByteVector32
 import fr.acinq.bitcoin.Crypto
 import fr.acinq.bitcoin.OutPoint
@@ -15,6 +16,7 @@ import fr.acinq.bitcoin.crypto.musig2.SecretNonce
 import fr.acinq.bitcoin.psbt.Psbt
 import fr.acinq.bitcoin.utils.Either
 import fr.acinq.bitcoin.utils.getOrElse
+import kotlin.random.Random
 
 /**
  * Signing abstraction for a wallet's key material.
@@ -71,7 +73,7 @@ interface Signer {
      *
      * @return A new [SignerSession] instance.
      */
-    suspend fun signerSession(): SignerSession
+    suspend fun signerSession(): SignerSession = TreeSignerSession(this)
 
     /**
      * Derives the x-only public key associated with [descriptor].
@@ -80,6 +82,14 @@ interface Signer {
      * @return The corresponding [XonlyPublicKey].
      */
     suspend fun xOnlyPublicKey(descriptor: String): XonlyPublicKey
+
+    /**
+     * Derives the full public key associated with [descriptor].
+     *
+     * @param descriptor The output descriptor identifying which key to derive.
+     * @return The corresponding [PublicKey].
+     */
+    suspend fun publicKey(descriptor: String): PublicKey
 
     /**
      * Returns this signer's account-level output descriptor.
@@ -99,7 +109,6 @@ interface Signer {
      * signer's own public key.
      * @param message The message (typically a sighash) that will be signed, if already known at
      * nonce generation time; `null` if it will only be known later.
-     * @param extraInput Additional randomness to mix into nonce generation, if any.
      * @return A pair of the secret nonce, which must be kept private and used only once for
      * [signMusig], and the corresponding public nonce, which is shared with the other
      * participants.
@@ -109,7 +118,6 @@ interface Signer {
         descriptor: String,
         pubKeys: List<PublicKey>,
         message: ByteVector32?,
-        extraInput: ByteVector32? = null,
     ): Pair<SecretNonce, IndividualNonce>
 
     /**
@@ -257,6 +265,14 @@ SignerImpl : Signer {
     override suspend fun xOnlyPublicKey(descriptor: String): XonlyPublicKey = privateKey.xOnlyPublicKey()
 
     /**
+     * Derives the full public key of [privateKey].
+     *
+     * @param descriptor The output descriptor identifying which key to derive.
+     * @return The corresponding [PublicKey].
+     */
+    override suspend fun publicKey(descriptor: String): PublicKey = privateKey.publicKey()
+
+    /**
      * Generates a MuSig2 nonce pair for [privateKey].
      *
      * @param sessionId A value unique to this signing session, used to derive the nonce
@@ -266,7 +282,6 @@ SignerImpl : Signer {
      * signer's own public key.
      * @param message The message (typically a sighash) that will be signed, if already known at
      * nonce generation time; `null` if it will only be known later.
-     * @param extraInput Additional randomness to mix into nonce generation, if any.
      * @return A pair of the secret nonce, which must be kept private and used only once for
      * [signMusig], and the corresponding public nonce, which is shared with the other
      * participants.
@@ -276,10 +291,10 @@ SignerImpl : Signer {
         descriptor: String,
         pubKeys: List<PublicKey>,
         message: ByteVector32?,
-        extraInput: ByteVector32?,
     ): Pair<SecretNonce, IndividualNonce> {
         val signingKey = Either.Left(privateKey)
-        return Musig2.generateNonce(sessionId, signingKey, pubKeys, message, extraInput)
+        val extraRandomness = ByteVector32(Random.nextBytes(32))
+        return Musig2.generateNonce(sessionId, signingKey, pubKeys, message, extraRandomness)
     }
 
     /**
@@ -315,18 +330,19 @@ SignerImpl : Signer {
         pubKeys: List<PublicKey>,
         pubNonces: List<IndividualNonce>,
         scriptTree: ScriptTree?,
-    ): ByteVector32 =
-        Musig2
-            .signTaprootInput(
-                privateKey,
-                tx,
-                inputIndex,
-                inputs,
-                pubKeys,
-                privNonce,
-                pubNonces,
-                scriptTree,
-            ).getOrElse { throw it }
+    ): ByteVector32 {
+        val signingSession =
+            Musig2
+                .taprootSession(
+                    tx,
+                    inputIndex,
+                    inputs,
+                    pubKeys,
+                    pubNonces,
+                    scriptTree,
+                ).getOrElse { throw it }
+        return signingSession.sign(privNonce, privateKey).getOrElse { throw it }
+    }
 
     /**
      * Signs each of [indices] on [psbt] with [privateKey], in order, folding the result of each

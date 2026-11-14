@@ -1,7 +1,8 @@
 package com.arkade.core.batches
 
 import com.arkade.core.getArkFieldsCosigners
-import com.arkade.core.wallet.Wallet
+import com.arkade.core.wallet.signer.Signer
+import com.arkade.core.wallet.signer.SignerSession
 import fr.acinq.bitcoin.ByteVector32
 import fr.acinq.bitcoin.PublicKey
 import fr.acinq.bitcoin.Script
@@ -16,10 +17,11 @@ import fr.acinq.bitcoin.crypto.musig2.SecretNonce
 import fr.acinq.bitcoin.sat
 
 /**
- * Manages this wallet's MuSig2 signing lifecycle for a single VTXO [graph] being cooperatively
+ * Manages this wallet's MuSig2 signing lifecycle for a single VTXO graph being cooperatively
  * signed with the Ark server and the other cosigners.
  *
  * The session's methods must be driven through a fixed lifecycle:
+ * 0. [init] must be called to set session parameters (graph, descriptor, tap script tree, and root amount).
  * 1. [getNonces] must be called first. It generates (once) and returns this wallet's public
  *    nonces for every transaction it cosigns, to be submitted to the server.
  * 2. [aggregateNonces] is called as the other cosigners' nonces for a given transaction become
@@ -34,24 +36,42 @@ import fr.acinq.bitcoin.sat
  * [getNonces] more than once, or calling [sign]/[verifyAggregatedNonces] before the relevant
  * nonces have been aggregated, throws [UnsupportedOperationException].
  *
- * @property wallet Used to derive this session's key material and produce partial signatures.
- * @property graph The VTXO tree being signed.
- * @property descriptor The output descriptor identifying the key this session signs with.
- * @property tapScriptTree The sweep tap script tree shared by every node's Taproot output.
- * @property rootSharedOutputAmount The amount of the commitment transaction's shared output
- * funding the root of [graph].
+ * @property signer Used to derive this session's key material and produce partial signatures.
  */
 class TreeSignerSession(
-    private val wallet: Wallet,
-    private val graph: TxTree,
-    private val descriptor: String,
-    private val tapScriptTree: ScriptTree,
-    private val rootSharedOutputAmount: Long,
-) {
-    private val tapScriptTreeRoot = tapScriptTree.hash()
+    private val signer: Signer,
+) : SignerSession {
+    private lateinit var graph: TxTree
+    private lateinit var descriptor: String
+    private lateinit var tapScriptTree: ScriptTree
+    private lateinit var tapScriptTreeRoot: ByteVector32
+
+    private var rootSharedOutputAmount: Long = 0
     private var myNonces: Map<ByteVector32, Pair<SecretNonce, IndividualNonce>>? = null
     private val treeNonces: MutableMap<ByteVector32, List<IndividualNonce>> = mutableMapOf()
     private val aggregatedNonces: MutableMap<ByteVector32, AggregatedNonce> = mutableMapOf()
+
+    /**
+     * Initializes the signing session parameters before nonce generation or signing.
+     *
+     * @param graph The VTXO tree being signed.
+     * @param descriptor The output descriptor identifying the key this session signs with.
+     * @param tapScriptTree The sweep tap script tree shared by every node's Taproot output.
+     * @param rootSharedOutputAmount The amount of the commitment transaction's shared output
+     * funding the root of [graph].
+     */
+    override fun init(
+        graph: TxTree,
+        descriptor: String,
+        tapScriptTree: ScriptTree,
+        rootSharedOutputAmount: Long,
+    ) {
+        this.graph = graph
+        this.descriptor = descriptor
+        this.tapScriptTree = tapScriptTree
+        this.tapScriptTreeRoot = tapScriptTree.hash()
+        this.rootSharedOutputAmount = rootSharedOutputAmount
+    }
 
     /**
      * Generates (on first call) and returns this wallet's public nonces for every transaction in
@@ -62,7 +82,7 @@ class TreeSignerSession(
      *
      * @return This wallet's public nonces, keyed by transaction id.
      */
-    suspend fun getNonces(): Map<ByteVector32, IndividualNonce> {
+    override suspend fun getNonces(): Map<ByteVector32, IndividualNonce> {
         if (myNonces == null) {
             myNonces = generateNonces()
         }
@@ -80,7 +100,7 @@ class TreeSignerSession(
      * wallet has no nonce for [txId], if [treeNonces] does not include this wallet's own nonce,
      * or if aggregation fails.
      */
-    fun aggregateNonces(
+    override fun aggregateNonces(
         treeNonces: List<IndividualNonce>,
         txId: TxId,
     ) {
@@ -109,7 +129,7 @@ class TreeSignerSession(
      * transaction in [expected] has not been locally aggregated via [aggregateNonces], or if
      * any aggregated nonce does not match.
      */
-    fun verifyAggregatedNonces(expected: Map<ByteVector32, IndividualNonce>) {
+    override fun verifyAggregatedNonces(expected: Map<ByteVector32, IndividualNonce>) {
         if (myNonces == null) {
             throw UnsupportedOperationException("Nonces not generated")
         }
@@ -134,7 +154,7 @@ class TreeSignerSession(
      * signing a transaction is attempted before its nonces were aggregated via
      * [aggregateNonces].
      */
-    suspend fun sign(): Map<ByteVector32, ByteVector32> {
+    override suspend fun sign(): Map<ByteVector32, ByteVector32> {
         if (myNonces == null) {
             throw UnsupportedOperationException("Nonces not generated")
         }
@@ -163,7 +183,6 @@ class TreeSignerSession(
         if (myNonces != null) {
             throw UnsupportedOperationException("Nonces already generated")
         }
-        val signer = wallet.signer
         val myPubKey = signer.xOnlyPublicKey(descriptor)
 
         val newNonces: MutableMap<ByteVector32, Pair<SecretNonce, IndividualNonce>> = mutableMapOf()
@@ -268,7 +287,7 @@ class TreeSignerSession(
         val pubNonces = treeNonces[txId] ?: throw UnsupportedOperationException("Missing tree nonces")
 
         val partialSig =
-            wallet.signer.signMusig(
+            signer.signMusig(
                 descriptor,
                 tx,
                 listOf(prevOut),

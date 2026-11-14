@@ -13,6 +13,7 @@ import com.arkade.core.intents.RegisterIntentMessage
 import com.arkade.core.isUnSpendable
 import com.arkade.core.toXOnlyPubKey
 import com.arkade.core.wallet.Wallet
+import com.arkade.core.wallet.signer.SignerSession
 import com.arkade.network.ArkadeClient
 import com.arkade.utils.Log
 import com.arkade.utils.info
@@ -58,7 +59,7 @@ class BatchSession(
 
     private lateinit var serverInfo: ArkServerInfo
 
-    private var signerSession: TreeSignerSession? = null
+    private var signerSession: SignerSession? = null
 
     var isComplete = false
         private set
@@ -104,7 +105,7 @@ class BatchSession(
                 is BatchEvent.BatchFailedEvent -> onBatchFailed(event)
 
                 is BatchEvent.TreeSigningStartedEvent -> {
-                    signerSession = onTreeSigningStarted(event)
+                    onTreeSigningStarted(event)
                 }
 
                 is BatchEvent.TreeNoncesAggregatedEvent -> {
@@ -249,7 +250,13 @@ class BatchSession(
         }
     }
 
-    override suspend fun onTreeSigningStarted(event: BatchEvent.TreeSigningStartedEvent): TreeSignerSession {
+    /**
+     * Called when VTXO tree signing begins. Validates the VTXO graph and commitment transaction,
+     * initializes a [SignerSession], generates nonces, and submits them to the server.
+     *
+     * @param event The event marking the start of VTXO tree signing.
+     */
+    override suspend fun onTreeSigningStarted(event: BatchEvent.TreeSigningStartedEvent) {
         val vtxoGraph = TxTree.create(vtxos)
         val commitmentTx =
             Psbt.read(event.unsignedCommitmentTx.encodeToByteArray()).getOrElse {
@@ -262,38 +269,43 @@ class BatchSession(
 
         val sharedOutput = commitmentTx.global.tx.txOut[0]
 
-        val signerSession =
-            TreeSignerSession(
-                wallet,
+        val signer = wallet.signer
+        signerSession = signer.signerSession()
+        if (signerDescriptor != null && signerSession != null) {
+            signerSession?.init(
                 vtxoGraph,
-                signerDescriptor!!,
+                signerDescriptor,
                 sweepTapTree,
                 sharedOutput.amount.sat,
             )
 
-        val nonces =
-            signerSession.getNonces().entries.associate { entry ->
-                entry.key.toHex() to entry.value.data.toHex()
-            }
+            val nonces =
+                signerSession?.getNonces()?.entries?.associate { entry ->
+                    entry.key.toHex() to entry.value.data.toHex()
+                }!!
 
-        val signer = wallet.signer
+            val signerPubKey = signer.xOnlyPublicKey(signerDescriptor)
 
-        val signerPubKey = signer.xOnlyPublicKey(signerDescriptor)
+            Log.info(
+                LOG_TAG,
+                "SubmitTreeNonces: using signerPubKey=$signerPubKey" +
+                    " (descriptorPubKey would have been ${signerDescriptor.toXOnlyPubKey()})",
+            )
 
-        Log.info(
-            LOG_TAG,
-            "SubmitTreeNonces: using signerPubKey=$signerPubKey" +
-                " (descriptorPubKey would have been ${signerDescriptor.toXOnlyPubKey()})",
-        )
-
-        client.submitTreeNonces(
-            event.id,
-            signerPubKey.value.toHex(),
-            nonces,
-        )
-        return signerSession
+            client.submitTreeNonces(
+                event.id,
+                signerPubKey.value.toHex(),
+                nonces,
+            )
+        }
     }
 
+    /**
+     * Called when all cosigner nonces have been aggregated by the server. Verifies the aggregated
+     * nonces against local calculations, generates partial signatures, and submits them to the server.
+     *
+     * @param event The event containing server-aggregated nonces.
+     */
     override suspend fun onTreeNoncesAggregated(event: BatchEvent.TreeNoncesAggregatedEvent) {
         if (signerSession != null && signerDescriptor != null) {
             val treeNonces =
@@ -321,6 +333,12 @@ class BatchSession(
         }
     }
 
+    /**
+     * Called when a VTXO tree transaction node is received from the server, adding it to either
+     * the VTXO or connectors list based on `batchIndex`.
+     *
+     * @param event The tree transaction event carrying the PSBT node and children mapping.
+     */
     override suspend fun onTreeTx(event: BatchEvent.TreeTxEvent) {
         val children =
             event.children.entries.associate { child ->
@@ -334,6 +352,12 @@ class BatchSession(
         }
     }
 
+    /**
+     * Called when individual cosigner nonces are received from the server for a specific transaction,
+     * aggregating them into the active [SignerSession].
+     *
+     * @param event The event carrying cosigner nonces for a transaction.
+     */
     override suspend fun onTreeNonces(event: BatchEvent.TreeNoncesEvent) {
         if (signerSession != null) {
             val treeNonces =

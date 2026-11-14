@@ -113,10 +113,6 @@ class HDSigner private constructor(
             )
         }
 
-    override suspend fun signerSession(): SignerSession {
-        TODO("Not yet implemented")
-    }
-
     /**
      * Derives the child private key for [descriptor]'s index and returns its x-only public key.
      *
@@ -127,6 +123,18 @@ class HDSigner private constructor(
         mutex.withLock {
             deriveChildPrivateKey(descriptor)
             super.xOnlyPublicKey(descriptor)
+        }
+
+    /**
+     * Derives the child private key for [descriptor]'s index and returns its full public key.
+     *
+     * @param descriptor The output descriptor whose trailing index identifies the child key.
+     * @return The corresponding [PublicKey].
+     */
+    override suspend fun publicKey(descriptor: String): PublicKey =
+        mutex.withLock {
+            deriveChildPrivateKey(descriptor)
+            super.publicKey(descriptor)
         }
 
     /**
@@ -150,11 +158,10 @@ class HDSigner private constructor(
         descriptor: String,
         pubKeys: List<PublicKey>,
         message: ByteVector32?,
-        extraInput: ByteVector32?,
     ): Pair<SecretNonce, IndividualNonce> =
         mutex.withLock {
             deriveChildPrivateKey(descriptor)
-            super.generateNonce(sessionId, descriptor, pubKeys, message, extraInput)
+            super.generateNonce(sessionId, descriptor, pubKeys, message)
         }
 
     /**
