@@ -125,6 +125,12 @@ class HDSigner private constructor(
             super.xOnlyPublicKey(descriptor)
         }
 
+    /**
+     * Derives the child private key for [descriptor]'s index and returns its full public key.
+     *
+     * @param descriptor The output descriptor whose trailing index identifies the child key.
+     * @return The corresponding [PublicKey].
+     */
     override suspend fun publicKey(descriptor: String): PublicKey =
         mutex.withLock {
             deriveChildPrivateKey(descriptor)

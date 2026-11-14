@@ -83,6 +83,12 @@ interface Signer {
      */
     suspend fun xOnlyPublicKey(descriptor: String): XonlyPublicKey
 
+    /**
+     * Derives the full public key associated with [descriptor].
+     *
+     * @param descriptor The output descriptor identifying which key to derive.
+     * @return The corresponding [PublicKey].
+     */
     suspend fun publicKey(descriptor: String): PublicKey
 
     /**
@@ -258,6 +264,12 @@ SignerImpl : Signer {
      */
     override suspend fun xOnlyPublicKey(descriptor: String): XonlyPublicKey = privateKey.xOnlyPublicKey()
 
+    /**
+     * Derives the full public key of [privateKey].
+     *
+     * @param descriptor The output descriptor identifying which key to derive.
+     * @return The corresponding [PublicKey].
+     */
     override suspend fun publicKey(descriptor: String): PublicKey = privateKey.publicKey()
 
     /**

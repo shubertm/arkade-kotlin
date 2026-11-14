@@ -30,6 +30,8 @@ interface BatchEventHandler {
 
     /**
      * Called when signing of the VTXO tree has started.
+     *
+     * @param event The tree signing started event carrying the batch ID and unsigned commitment transaction.
      */
     suspend fun onTreeSigningStarted(event: BatchEvent.TreeSigningStartedEvent)
 

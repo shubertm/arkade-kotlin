@@ -17,10 +17,11 @@ import fr.acinq.bitcoin.crypto.musig2.SecretNonce
 import fr.acinq.bitcoin.sat
 
 /**
- * Manages this wallet's MuSig2 signing lifecycle for a single VTXO [graph] being cooperatively
+ * Manages this wallet's MuSig2 signing lifecycle for a single VTXO graph being cooperatively
  * signed with the Ark server and the other cosigners.
  *
  * The session's methods must be driven through a fixed lifecycle:
+ * 0. [init] must be called to set session parameters (graph, descriptor, tap script tree, and root amount).
  * 1. [getNonces] must be called first. It generates (once) and returns this wallet's public
  *    nonces for every transaction it cosigns, to be submitted to the server.
  * 2. [aggregateNonces] is called as the other cosigners' nonces for a given transaction become
@@ -35,12 +36,7 @@ import fr.acinq.bitcoin.sat
  * [getNonces] more than once, or calling [sign]/[verifyAggregatedNonces] before the relevant
  * nonces have been aggregated, throws [UnsupportedOperationException].
  *
- * @property wallet Used to derive this session's key material and produce partial signatures.
- * @property graph The VTXO tree being signed.
- * @property descriptor The output descriptor identifying the key this session signs with.
- * @property tapScriptTree The sweep tap script tree shared by every node's Taproot output.
- * @property rootSharedOutputAmount The amount of the commitment transaction's shared output
- * funding the root of [graph].
+ * @property signer Used to derive this session's key material and produce partial signatures.
  */
 class TreeSignerSession(
     private val signer: Signer,
@@ -55,6 +51,15 @@ class TreeSignerSession(
     private val treeNonces: MutableMap<ByteVector32, List<IndividualNonce>> = mutableMapOf()
     private val aggregatedNonces: MutableMap<ByteVector32, AggregatedNonce> = mutableMapOf()
 
+    /**
+     * Initializes the signing session parameters before nonce generation or signing.
+     *
+     * @param graph The VTXO tree being signed.
+     * @param descriptor The output descriptor identifying the key this session signs with.
+     * @param tapScriptTree The sweep tap script tree shared by every node's Taproot output.
+     * @param rootSharedOutputAmount The amount of the commitment transaction's shared output
+     * funding the root of [graph].
+     */
     override fun init(
         graph: TxTree,
         descriptor: String,

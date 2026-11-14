@@ -250,6 +250,12 @@ class BatchSession(
         }
     }
 
+    /**
+     * Called when VTXO tree signing begins. Validates the VTXO graph and commitment transaction,
+     * initializes a [SignerSession], generates nonces, and submits them to the server.
+     *
+     * @param event The event marking the start of VTXO tree signing.
+     */
     override suspend fun onTreeSigningStarted(event: BatchEvent.TreeSigningStartedEvent) {
         val vtxoGraph = TxTree.create(vtxos)
         val commitmentTx =
@@ -294,6 +300,12 @@ class BatchSession(
         }
     }
 
+    /**
+     * Called when all cosigner nonces have been aggregated by the server. Verifies the aggregated
+     * nonces against local calculations, generates partial signatures, and submits them to the server.
+     *
+     * @param event The event containing server-aggregated nonces.
+     */
     override suspend fun onTreeNoncesAggregated(event: BatchEvent.TreeNoncesAggregatedEvent) {
         if (signerSession != null && signerDescriptor != null) {
             val treeNonces =
@@ -321,6 +333,12 @@ class BatchSession(
         }
     }
 
+    /**
+     * Called when a VTXO tree transaction node is received from the server, adding it to either
+     * the VTXO or connectors list based on `batchIndex`.
+     *
+     * @param event The tree transaction event carrying the PSBT node and children mapping.
+     */
     override suspend fun onTreeTx(event: BatchEvent.TreeTxEvent) {
         val children =
             event.children.entries.associate { child ->
@@ -334,6 +352,12 @@ class BatchSession(
         }
     }
 
+    /**
+     * Called when individual cosigner nonces are received from the server for a specific transaction,
+     * aggregating them into the active [SignerSession].
+     *
+     * @param event The event carrying cosigner nonces for a transaction.
+     */
     override suspend fun onTreeNonces(event: BatchEvent.TreeNoncesEvent) {
         if (signerSession != null) {
             val treeNonces =
