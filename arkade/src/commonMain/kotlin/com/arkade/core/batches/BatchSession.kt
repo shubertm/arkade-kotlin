@@ -156,9 +156,10 @@ class BatchSession(
         event: BatchEvent.BatchFinalizationEvent,
         connectors: List<TxTreeNode>,
     ) {
+        val commitmentTxBytes = Base64.decode(event.commitmentTx)
         val commitmentPSBT =
             Psbt
-                .read(event.commitmentTx.encodeToByteArray())
+                .read(commitmentTxBytes)
                 .getOrElse { throw IllegalStateException("Failed to read commitment tx") }
         var connectorsGraph: TxTree? = null
         if (connectors.isNotEmpty()) {
@@ -258,8 +259,9 @@ class BatchSession(
      */
     override suspend fun onTreeSigningStarted(event: BatchEvent.TreeSigningStartedEvent) {
         val vtxoGraph = TxTree.create(vtxos)
+        val commitmentTxBytes = Base64.decode(event.unsignedCommitmentTx)
         val commitmentTx =
-            Psbt.read(event.unsignedCommitmentTx.encodeToByteArray()).getOrElse {
+            Psbt.read(commitmentTxBytes).getOrElse {
                 throw UnsupportedOperationException("Failed to read commitment tx")
             }
 
