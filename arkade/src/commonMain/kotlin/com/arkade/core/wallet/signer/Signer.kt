@@ -1,6 +1,7 @@
 package com.arkade.core.wallet.signer
 
 import com.arkade.core.batches.TreeSignerSession
+import com.arkade.core.secureRandom
 import fr.acinq.bitcoin.ByteVector32
 import fr.acinq.bitcoin.Crypto
 import fr.acinq.bitcoin.OutPoint
@@ -16,7 +17,6 @@ import fr.acinq.bitcoin.crypto.musig2.SecretNonce
 import fr.acinq.bitcoin.psbt.Psbt
 import fr.acinq.bitcoin.utils.Either
 import fr.acinq.bitcoin.utils.getOrElse
-import kotlin.random.Random
 
 /**
  * Signing abstraction for a wallet's key material.
@@ -293,7 +293,7 @@ SignerImpl : Signer {
         message: ByteVector32?,
     ): Pair<SecretNonce, IndividualNonce> {
         val signingKey = Either.Left(privateKey)
-        val extraRandomness = ByteVector32(Random.nextBytes(32))
+        val extraRandomness = ByteVector32(secureRandom())
         return Musig2.generateNonce(sessionId, signingKey, pubKeys, message, extraRandomness)
     }
 

@@ -1,5 +1,6 @@
 package com.arkade.core.wallet
 
+import com.arkade.core.secureRandom
 import com.arkade.core.wallet.addresses.SingleKeyAddressProvider
 import com.arkade.core.wallet.signer.SingleKeySigner
 import fr.acinq.bitcoin.ByteVector32
@@ -19,7 +20,6 @@ import fr.acinq.bitcoin.crypto.musig2.SecretNonce
 import fr.acinq.bitcoin.sat
 import fr.acinq.bitcoin.utils.Either
 import kotlinx.coroutines.test.runTest
-import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
@@ -51,8 +51,8 @@ class SingleKeySignerTest : SignerTest() {
             var prevPubNonce: IndividualNonce? = null
             val cosigners =
                 listOf(
-                    PrivateKey.fromHex(Random.nextBytes(32).toHexString()).publicKey(),
-                    PrivateKey.fromHex(Random.nextBytes(32).toHexString()).publicKey(),
+                    PrivateKey.fromHex(secureRandom().toHexString()).publicKey(),
+                    PrivateKey.fromHex(secureRandom().toHexString()).publicKey(),
                 )
             val descriptor = addressProvider.getNextSigningDescriptor()
             val sessionId = ByteVector32.One
@@ -79,7 +79,7 @@ class SingleKeySignerTest : SignerTest() {
             val descriptor = addressProvider.getNextSigningDescriptor()
             val alicePubKey = signer.publicKey(descriptor)
 
-            val bobPriv = PrivateKey(Random.nextBytes(32))
+            val bobPriv = PrivateKey(secureRandom())
             val bobPubKey = bobPriv.publicKey()
 
             val pubKeys =
@@ -109,7 +109,7 @@ class SingleKeySignerTest : SignerTest() {
 
             val (aliceSecNonce, alicePubNonce) =
                 signer.generateNonce(
-                    ByteVector32(Random.nextBytes(32)),
+                    ByteVector32(secureRandom()),
                     descriptor,
                     pubKeys,
                     sigHash,
@@ -117,7 +117,7 @@ class SingleKeySignerTest : SignerTest() {
 
             val (bobSecNonce, bobPubNonce) =
                 Musig2.generateNonce(
-                    ByteVector32(Random.nextBytes(32)),
+                    ByteVector32(secureRandom()),
                     Either.Left(bobPriv),
                     pubKeys,
                     sigHash,
