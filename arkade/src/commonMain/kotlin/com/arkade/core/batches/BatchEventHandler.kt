@@ -25,6 +25,8 @@ interface BatchEventHandler {
 
     /**
      * Called when the batch has failed.
+     *
+     * @param event The batch failed event carrying the failure reason.
      */
     suspend fun onBatchFailed(event: BatchEvent.BatchFailedEvent)
 
@@ -37,21 +39,29 @@ interface BatchEventHandler {
 
     /**
      * Called when the VTXO tree signing nonces have been aggregated by the server.
+     *
+     * @param event The aggregated nonces event carrying the server-aggregated public nonces.
      */
     suspend fun onTreeNoncesAggregated(event: BatchEvent.TreeNoncesAggregatedEvent)
 
     /**
      * Called when a VTXO tree transaction is received from the server.
+     *
+     * @param event The tree transaction event carrying the transaction node.
      */
     suspend fun onTreeTx(event: BatchEvent.TreeTxEvent)
 
     /**
      * Called when a VTXO tree signature is received from the server.
+     *
+     * @param event The tree signature event carrying the server's signature for a node.
      */
     suspend fun onTreeSignature(event: BatchEvent.TreeSignatureEvent) {}
 
     /**
      * Called when VTXO tree signing nonces are received from the server.
+     *
+     * @param event The tree nonces event carrying cosigner nonces for a transaction.
      */
     suspend fun onTreeNonces(event: BatchEvent.TreeNoncesEvent)
 }

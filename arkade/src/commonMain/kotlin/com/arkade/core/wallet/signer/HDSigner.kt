@@ -61,6 +61,14 @@ class HDSigner private constructor(
             super.sign(descriptor, psbt, inputIndexes)
         }
 
+    /**
+     * Derives the child private key for [descriptor]'s index and signs [psbt] for inputs matching [outpoints].
+     *
+     * @param descriptor The output descriptor whose trailing index identifies the child key.
+     * @param psbt The PSBT to sign.
+     * @param outpoints The outpoints of the inputs to sign; if empty, all inputs are signed.
+     * @return The PSBT with all requested inputs signed.
+     */
     override suspend fun sign(
         descriptor: String,
         psbt: Psbt,
@@ -89,6 +97,19 @@ class HDSigner private constructor(
             super.signMessage(descriptor, message, signatureType)
         }
 
+    /**
+     * Derives the child private key for [descriptor]'s index and produces a MuSig2 partial signature.
+     *
+     * @param descriptor The output descriptor whose trailing index identifies the child key.
+     * @param tx The transaction being signed.
+     * @param inputs The previous outputs spent by each of [tx]'s inputs, in input order.
+     * @param inputIndex The index of the input to produce a partial signature for.
+     * @param privNonce This signer's secret nonce.
+     * @param pubKeys The public keys of all participants in the signing session.
+     * @param pubNonces The public nonces of all participants for this input.
+     * @param scriptTree The Taproot script tree being spent from, if this is a script-path spend; `null` for key-path.
+     * @return This signer's partial signature over the input.
+     */
     override suspend fun signMusig(
         descriptor: String,
         tx: Transaction,
@@ -153,6 +174,15 @@ class HDSigner private constructor(
         return accountDescriptor
     }
 
+    /**
+     * Derives the child private key for [descriptor]'s index and generates a MuSig2 nonce pair.
+     *
+     * @param sessionId A unique session ID for this signing session.
+     * @param descriptor The output descriptor whose trailing index identifies the child key.
+     * @param pubKeys The public keys of all participants in the signing session.
+     * @param message The sighash message being signed, if known.
+     * @return A pair of (secret nonce, public nonce).
+     */
     override suspend fun generateNonce(
         sessionId: ByteVector32,
         descriptor: String,

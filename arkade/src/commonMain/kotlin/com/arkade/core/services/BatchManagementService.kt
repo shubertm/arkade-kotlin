@@ -90,6 +90,9 @@ class BatchManagementService(
             }
     }
 
+    /**
+     * Disposes the batch management service by unsubscribing from intent repository change notifications.
+     */
     fun dispose() {
         if (disposed) return
         intentsRepo.disposeOnIntentChanged()
