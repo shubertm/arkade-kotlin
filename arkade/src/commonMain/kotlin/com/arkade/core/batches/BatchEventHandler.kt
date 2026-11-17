@@ -54,7 +54,7 @@ interface BatchEventHandler {
     /**
      * Called when a VTXO tree signature is received from the server.
      *
-     * @param event The tree signature event carrying the server's signature for a node.
+     * @param event The tree signature event carrying the cosigner's partial signature for a node.
      */
     suspend fun onTreeSignature(event: BatchEvent.TreeSignatureEvent) {}
 
