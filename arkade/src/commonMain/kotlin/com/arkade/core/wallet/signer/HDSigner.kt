@@ -61,6 +61,14 @@ class HDSigner private constructor(
             super.sign(descriptor, psbt, inputIndexes)
         }
 
+    /**
+     * Derives the child private key for [descriptor]'s index and signs [psbt] for inputs matching [outpoints].
+     *
+     * @param descriptor The output descriptor whose trailing index identifies the child key.
+     * @param psbt The PSBT to sign.
+     * @param outpoints The outpoints of the inputs to sign; if empty, all inputs are signed.
+     * @return The PSBT with all requested inputs signed.
+     */
     override suspend fun sign(
         descriptor: String,
         psbt: Psbt,
@@ -89,6 +97,25 @@ class HDSigner private constructor(
             super.signMessage(descriptor, message, signatureType)
         }
 
+    /**
+     * Derives the child private key for [descriptor]'s index and produces a MuSig2 partial signature.
+     *
+     * @param descriptor The output descriptor whose trailing index identifies the child key.
+     * @param tx The transaction being signed.
+     * @param inputs The previous outputs spent by each of [tx]'s inputs, in input order.
+     * @param inputIndex The index of the input to produce a partial signature for.
+     * @param privNonce This signer's secret nonce.
+     * @param pubKeys The public keys of all participants in the signing session.
+     * @param pubNonces The public nonces of all participants for this input.
+     * @param scriptTree The Taproot script tree committed to by the output being spent, if one exists.
+     * Callers must pass the output's [ScriptTree] when the output commits to a script tree (even when performing
+     * a key-path spend, as the underlying library computes a key-path sighash and requires the tree's merkle root
+     * to derive the correct tweaked key); pass `null` only when the output has no script tree. Passing `null`
+     * for an output with a script tree selects a different tweak and produces a wrong partial signature,
+     * if all cosigners provide a signature with wrong tweak, the aggregated signature
+     * fails verification.
+     * @return This signer's partial signature over the input.
+     */
     override suspend fun signMusig(
         descriptor: String,
         tx: Transaction,
@@ -153,6 +180,17 @@ class HDSigner private constructor(
         return accountDescriptor
     }
 
+    /**
+     * Derives the child private key for [descriptor]'s index and generates a MuSig2 nonce pair.
+     *
+     * @param sessionId A unique session ID for this signing session.
+     * @param descriptor The output descriptor whose trailing index identifies the child key.
+     * @param pubKeys The public keys of all participants in the signing session.
+     * @param message The sighash message being signed, if known.
+     * @return A pair of the secret nonce, which must be kept private and used only once for
+     * [signMusig], and the corresponding public nonce, which is shared with the other
+     * participants.
+     */
     override suspend fun generateNonce(
         sessionId: ByteVector32,
         descriptor: String,
