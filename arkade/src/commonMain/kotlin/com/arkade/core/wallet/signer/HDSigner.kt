@@ -107,7 +107,12 @@ class HDSigner private constructor(
      * @param privNonce This signer's secret nonce.
      * @param pubKeys The public keys of all participants in the signing session.
      * @param pubNonces The public nonces of all participants for this input.
-     * @param scriptTree The Taproot script tree being spent from, if this is a script-path spend; `null` for key-path.
+     * @param scriptTree The Taproot script tree committed to by the output being spent, if one exists.
+     * Callers must pass the output's [ScriptTree] when the output commits to a script tree (even when performing
+     * a key-path spend, as the underlying library computes a key-path sighash and requires the tree's merkle root
+     * to derive the correct tweaked key); pass `null` only when the output has no script tree. Passing `null`
+     * for an output with a script tree selects a different tweak and produces a signature that does not match
+     * the output key.
      * @return This signer's partial signature over the input.
      */
     override suspend fun signMusig(
