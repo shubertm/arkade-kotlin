@@ -26,9 +26,9 @@ jobs:
         run: ./gradlew lint --no-daemon
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version: '20'
+          node-version: '24'
 
       - name: Start RegTest Environment
         run: node regtest/regtest.mjs start
