@@ -244,6 +244,13 @@ class BatchSession(
         }
     }
 
+    /**
+     * Called when the batch has failed, marking [isComplete] as true and throwing an exception if
+     * [event.id] = [batchId].
+     *
+     * @param event The batch failed event carrying the failure reason.
+     * @throws UnsupportedOperationException Always thrown with the batch failure reason.
+     */
     override suspend fun onBatchFailed(event: BatchEvent.BatchFailedEvent) {
         if (event.id == batchId) {
             isComplete = true
@@ -371,6 +378,11 @@ class BatchSession(
         }
     }
 
+    /**
+     * Parses the transaction outputs declared in the intent registration proof PSBT.
+     *
+     * @return The list of transaction outputs declared in the registration proof.
+     */
     private fun parseIntentOutputs(): List<TxOut> {
         val registerProof =
             Psbt
@@ -379,6 +391,15 @@ class BatchSession(
         return registerProof.global.tx.txOut
     }
 
+    /**
+     * Validates that all spendable outputs specified in the intent are present in either the
+     * commitment transaction (for on-chain outputs) or the VTXO tree leaves (for off-chain outputs).
+     * Unspendable outputs are skipped. An unspendable extension output supplies the asset packet
+     * that is checked against the VTXO tree leaves.
+     * @param vtxoGraph The VTXO transaction tree.
+     * @param commitmentTx The unsigned commitment transaction PSBT.
+     * @throws UnsupportedOperationException If an output expected in the commitment transaction or VTXO leaves is missing.
+     */
     private fun validateIntentOutputs(
         vtxoGraph: TxTree,
         commitmentTx: Psbt,
@@ -438,6 +459,14 @@ class BatchSession(
         }
     }
 
+    /**
+     * Validates that the asset ids, output indices, and amounts of the asset packet specified in
+     * the intent match an asset packet present in the VTXO tree leaves.
+     * Inputs, control assets, and metadata are not compared.
+     * @param intentPacket The asset packet expected by the intent.
+     * @param vtxoLeaves The leaf nodes of the VTXO tree.
+     * @throws UnsupportedOperationException If no matching asset packet is found in the leaves.
+     */
     private fun validateLeafAssetPacket(
         intentPacket: Packet,
         vtxoLeaves: Iterable<Psbt>,

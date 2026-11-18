@@ -64,7 +64,7 @@ class BatchManagementService(
     /**
      * Starts the batch event stream and processes incoming events.
      *
-     * Loads active intents, subscribes to intent changes, and retries recoverable stream failures up to eight times.
+     * Loads active intents, subscribes to intent-related topics and retries recoverable stream failures up to eight times.
      */
     suspend fun start() {
         loadActiveIntents()
@@ -90,6 +90,11 @@ class BatchManagementService(
             }
     }
 
+    /**
+     * Disposes the batch management service by unsubscribing from intent repository change notifications.
+     * The batch event stream is never stopped, callers should cancel the coroutine job that called
+     * [start]
+     */
     fun dispose() {
         if (disposed) return
         intentsRepo.disposeOnIntentChanged()
