@@ -143,8 +143,8 @@ interface Signer {
      * Callers must pass the output's [ScriptTree] when the output commits to a script tree (even when performing
      * a key-path spend, as the underlying library computes a key-path sighash and requires the tree's merkle root
      * to derive the correct tweaked key); pass `null` only when the output has no script tree. Passing `null`
-     * for an output with a script tree selects a different tweak and produces a signature that does not match
-     * the output key, if all cosigners provide a signature with wrong tweak, the aggregated signature
+     * for an output with a script tree selects a different tweak and produces a wrong partial signature,
+     * if all cosigners provide a signature with wrong tweak, the aggregated signature
      * fails verification.
      * @return This signer's partial signature over the input.
      */
@@ -324,8 +324,8 @@ SignerImpl : Signer {
      * Callers must pass the output's [ScriptTree] when the output commits to a script tree (even when performing
      * a key-path spend, as the underlying library computes a key-path sighash and requires the tree's merkle root
      * to derive the correct tweaked key); pass `null` only when the output has no script tree. Passing `null`
-     * for an output with a script tree selects a different tweak and produces a signature that does not match
-     * the output key, if all cosigners provide a signature with wrong tweak, the aggregated signature
+     * for an output with a script tree selects a different tweak and produces a wrong partial signature,
+     * if all cosigners provide a signature with wrong tweak, the aggregated signature
      * fails verification.
      * @return This signer's partial signature over the input.
      * @throws Throwable the underlying error thrown by [Musig2.signTaprootInput] if partial
