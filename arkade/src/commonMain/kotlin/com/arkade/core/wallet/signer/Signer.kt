@@ -144,7 +144,8 @@ interface Signer {
      * a key-path spend, as the underlying library computes a key-path sighash and requires the tree's merkle root
      * to derive the correct tweaked key); pass `null` only when the output has no script tree. Passing `null`
      * for an output with a script tree selects a different tweak and produces a signature that does not match
-     * the output key.
+     * the output key, if all cosigners provide a signature with wrong tweak, the aggregated signature
+     * fails verification.
      * @return This signer's partial signature over the input.
      */
     suspend fun signMusig(

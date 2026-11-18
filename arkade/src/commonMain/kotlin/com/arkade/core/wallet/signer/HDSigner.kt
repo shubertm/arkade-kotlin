@@ -186,7 +186,9 @@ class HDSigner private constructor(
      * @param descriptor The output descriptor whose trailing index identifies the child key.
      * @param pubKeys The public keys of all participants in the signing session.
      * @param message The sighash message being signed, if known.
-     * @return A pair of (secret nonce, public nonce).
+     * @return A pair of the secret nonce, which must be kept private and used only once for
+     * [signMusig], and the corresponding public nonce, which is shared with the other
+     * participants.
      */
     override suspend fun generateNonce(
         sessionId: ByteVector32,
