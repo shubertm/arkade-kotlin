@@ -64,8 +64,7 @@ class BatchManagementService(
     /**
      * Starts the batch event stream and processes incoming events.
      *
-     * Loads active intents, subscribes to intent-related topics, and retries recoverable stream
-     * changes, and retries recoverable stream failures up to eight times.
+     * Loads active intents, subscribes to intent-related topics and retries recoverable stream failures up to eight times.
      */
     suspend fun start() {
         loadActiveIntents()
