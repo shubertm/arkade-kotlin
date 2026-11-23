@@ -36,13 +36,10 @@ fun Long.multiplyExact(other: Long): Long {
     return result
 }
 
-fun <T> Iterable<T>.sumOf(selector: (T) -> BigDecimal): BigDecimal {
-    var sum: BigDecimal = 0.toBigDecimal()
-    for (element in this) {
-        sum += selector(element)
+fun <T> Iterable<T>.sumOf(selector: (T) -> BigDecimal): BigDecimal =
+    fold(0.toBigDecimal()) { sum, element ->
+        sum + BigDecimal.fromBigDecimal(selector(element), sum.decimalMode)
     }
-    return sum
-}
 
 /**
  * Converts a hex string to an [XonlyPublicKey] public key
